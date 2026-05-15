@@ -1,0 +1,16 @@
+{
+  "name": "servio",
+  "private": true,
+  "workspaces": ["client", "server"],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspace=client",
+    "start": "node server/src/index.js",
+    "dev": "concurrently \"npm run dev --workspace=client\" \"npm run dev --workspace=server\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
