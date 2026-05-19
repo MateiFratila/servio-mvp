@@ -1,0 +1,39 @@
+name: Run Database Migrations
+
+on:
+  # Run manually from the Actions tab
+  workflow_dispatch:
+
+  # Also run automatically when new migration files are merged to main
+  push:
+    branches: [main]
+    paths:
+      - 'server/prisma/migrations/**'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: server
+        run: npx prisma generate --schema=prisma/schema.prisma
+
+      - name: Deploy migrations
+        working-directory: server
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy --schema=prisma/schema.prisma
