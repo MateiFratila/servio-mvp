@@ -28,12 +28,7 @@ export default function Navbar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <span style={{ fontWeight: 700, fontSize: 16 }}>Servio</span>
           <div style={{ display: 'flex', gap: 4 }}>
-            {(role === 'client' || role === 'admin') && (
-              <NavLink to="/catalogue" style={linkStyle}>Catalogue</NavLink>
-            )}
-            {(role === 'consultant' || role === 'admin') && (
-              <NavLink to="/dashboard" style={linkStyle}>Dashboard</NavLink>
-            )}
+            <NavLink to="/acasa" style={linkStyle}>Acasă</NavLink>
             {role === 'admin' && (
               <NavLink to="/tools" style={linkStyle}>Tools</NavLink>
             )}

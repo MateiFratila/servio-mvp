@@ -1,12 +1,9 @@
 import { useState } from 'react'
+import { useGetMySessionsAsConsultantQuery, useUpdateSessionStatusMutation } from './dashboardApi'
 
-const PLACEHOLDER_SESSIONS = [
-  { id: 4821, client: 'Lorem Client', dateTime: '20 May 2026, 10:30', status: 'pending', notes: 'Need advice on Q2 VAT filing.' },
-  { id: 4820, client: 'Ipsum Corp', dateTime: '22 May 2026, 09:00', status: 'confirmed', notes: 'Annual payroll review.' },
-  { id: 4819, client: 'Dolor Ltd', dateTime: '25 May 2026, 16:00', status: 'confirmed', notes: '' },
-  { id: 4818, client: 'Sit Advisory', dateTime: '10 May 2026, 11:00', status: 'completed', notes: 'Estate planning initial consult.' },
-  { id: 4817, client: 'Amet Holdings', dateTime: '05 May 2026, 13:30', status: 'cancelled', notes: '' },
-]
+function fmtDateTime(iso) {
+  return new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
 const STATUSES = ['All', 'pending', 'confirmed', 'completed', 'cancelled']
 
@@ -19,11 +16,11 @@ const STATUS_BADGE = {
 
 export default function SessionsTab() {
   const [statusFilter, setStatusFilter] = useState('All')
-  // TODO: const { data: sessions = [] } = useGetMySessionsAsConsultantQuery()
+  const { data, isLoading } = useGetMySessionsAsConsultantQuery()
+  const [updateStatus] = useUpdateSessionStatusMutation()
 
-  const sessions = PLACEHOLDER_SESSIONS.filter((s) =>
-    statusFilter === 'All' ? true : s.status === statusFilter
-  )
+  const allSessions = data?.data ?? []
+  const sessions = statusFilter === 'All' ? allSessions : allSessions.filter((s) => s.status === statusFilter)
 
   return (
     <div className="card">
@@ -43,36 +40,47 @@ export default function SessionsTab() {
         </div>
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Client</th>
-              <th>Date &amp; Time</th>
-              <th>Status</th>
-              <th>Notes</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.map((s) => (
-              <tr key={s.id}>
-                <td style={{ fontWeight: 500 }}>{s.client}</td>
-                <td style={{ color: 'var(--text-muted)' }}>{s.dateTime}</td>
-                <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
-                <td style={{ color: 'var(--text-muted)', maxWidth: 240 }}>
-                  <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {s.notes || '—'}
-                  </span>
-                </td>
-                <td>
-                  {s.status === 'pending' && <button className="btn btn-primary btn-sm">Confirm</button>}
-                </td>
+      {isLoading ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading…</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Date &amp; Time</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {sessions.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ fontWeight: 500 }}>{s.client?.email ?? '—'}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{fmtDateTime(s.slot?.startTime)}</td>
+                  <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
+                  <td style={{ color: 'var(--text-muted)', maxWidth: 240 }}>
+                    <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {s.notes || '—'}
+                    </span>
+                  </td>
+                  <td>
+                    {s.status === 'pending' && (
+                      <button className="btn btn-primary btn-sm" onClick={() => updateStatus({ id: s.id, status: 'confirmed' })}>
+                        Confirm
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {sessions.length === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>No sessions.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

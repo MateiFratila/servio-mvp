@@ -1,30 +1,39 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useGetMyProfileQuery, useUpdateMyProfileMutation } from './dashboardApi'
 
 const SPECIALISATIONS = ['Tax Law', 'VAT Compliance', 'Payroll', 'Audit', 'Corporate Finance', 'Estate Planning']
 
-const PLACEHOLDER_PROFILE = {
-  displayName: 'Lorem Ipsum',
-  specialisation: 'Tax Law',
-  bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque vehicula erat at pretium tristique, lorem purus convallis nisi, at sagittis mauris sapien et ex.',
-  hourlyRate: 90,
-}
-
 export default function ProfileTab() {
-  const [form, setForm] = useState(PLACEHOLDER_PROFILE)
+  const { data: me, isLoading } = useGetMyProfileQuery()
+  const [updateProfile, { isLoading: saving }] = useUpdateMyProfileMutation()
+
+  const profileData = me?.profile
+  const [form, setForm] = useState(null)
   const [saved, setSaved] = useState(false)
-  // TODO: const { data } = useGetMyProfileQuery()
-  // TODO: const [updateProfile] = useUpdateMyProfileMutation()
+
+  useEffect(() => {
+    if (profileData) {
+      setForm({
+        displayName: profileData.displayName ?? '',
+        specialisation: profileData.specialisation ?? SPECIALISATIONS[0],
+        description: profileData.description ?? '',
+        hourlyRate: Number(profileData.hourlyRate) ?? 0,
+      })
+    }
+  }, [profileData])
 
   function handleChange(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
     setSaved(false)
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    // TODO: updateProfile(form)
+    await updateProfile(form)
     setSaved(true)
   }
+
+  if (isLoading || !form) return <div className="card"><p style={{ color: 'var(--text-muted)' }}>Loading…</p></div>
 
   return (
     <div className="card" style={{ maxWidth: 560 }}>
@@ -53,7 +62,7 @@ export default function ProfileTab() {
 
         <div className="form-group">
           <label>Bio</label>
-          <textarea rows={4} value={form.bio} onChange={(e) => handleChange('bio', e.target.value)} />
+          <textarea rows={4} value={form.description} onChange={(e) => handleChange('description', e.target.value)} />
         </div>
 
         <div className="form-group">
@@ -67,7 +76,9 @@ export default function ProfileTab() {
         </div>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button type="submit" className="btn btn-primary">Save Changes</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
           {saved && <span style={{ fontSize: 13, color: 'var(--green)' }}>✓ Saved</span>}
         </div>
       </form>

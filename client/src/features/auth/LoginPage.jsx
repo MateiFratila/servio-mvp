@@ -2,38 +2,30 @@ import { useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { setCredentials } from './authSlice'
-
-const ROLE_DEFAULTS = {
-  client: { id: 1, email: 'client@servio.io', name: 'Lorem Client', role: 'client' },
-  consultant: { id: 2, email: 'consultant@servio.io', name: 'Lorem Ipsum', role: 'consultant' },
-  admin: { id: 3, email: 'admin@servio.io', name: 'Admin User', role: 'admin' },
-}
-
-const ROLE_REDIRECT = {
-  client: '/catalogue',
-  consultant: '/dashboard',
-  admin: '/tools',
-}
+import { useLoginMutation } from './authApi'
 
 export default function LoginPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const [login, { isLoading }] = useLoginMutation()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('client')
   const [error, setError] = useState('')
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     if (!email || !password) {
       setError('Please enter your email and password.')
       return
     }
-    // TODO: replace with real POST /api/auth/login
-    const user = { ...ROLE_DEFAULTS[role], email }
-    dispatch(setCredentials({ user, token: 'mock-jwt-token' }))
-    navigate(ROLE_REDIRECT[role])
+    try {
+      const result = await login({ email, password }).unwrap()
+      dispatch(setCredentials({ user: result.user, token: result.token }))
+      navigate('/acasa', { replace: true })
+    } catch (err) {
+      setError(err?.data?.error ?? 'Login failed. Please try again.')
+    }
   }
 
   return (
@@ -75,17 +67,8 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="role">Role (dev only)</label>
-            <select id="role" value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="client">Client</option>
-              <option value="consultant">Consultant</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-
-          <button type="submit" className="btn btn-primary" style={{ marginTop: 4 }}>
-            Sign in
+          <button type="submit" className="btn btn-primary" style={{ marginTop: 4 }} disabled={isLoading}>
+            {isLoading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
       </div>

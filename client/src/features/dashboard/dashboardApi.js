@@ -7,11 +7,11 @@ export const dashboardApi = api.injectEndpoints({
       providesTags: ['Session'],
     }),
     getMyProfile: build.query({
-      query: () => '/users/me',
+      query: () => '/consultants/me',
       providesTags: ['User'],
     }),
     updateMyProfile: build.mutation({
-      query: (body) => ({ url: '/users/me', method: 'PATCH', body }),
+      query: (body) => ({ url: '/consultants/me', method: 'PATCH', body }),
       invalidatesTags: ['User'],
     }),
     getMySlots: build.query({

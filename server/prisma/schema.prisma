@@ -1,0 +1,98 @@
+// Prisma schema for Servio
+// Docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  client
+  consultant
+  admin
+}
+
+enum SessionStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(client)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  profile  ConsultantProfile?
+  sessions Session[]          @relation("ClientSessions")
+
+  @@map("users")
+}
+
+model ConsultantProfile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  displayName    String   @map("display_name")
+  description    String?  @db.Text
+  specialisation String
+  hourlyRate     Decimal  @map("hourly_rate") @db.Decimal(10, 2)
+  avatarUrl      String?  @map("avatar_url")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availabilitySlots AvailabilitySlot[]
+  sessions          Session[]          @relation("ConsultantSessions")
+
+  @@map("consultant_profiles")
+}
+
+model AvailabilitySlot {
+  id           Int      @id @default(autoincrement())
+  consultantId Int      @map("consultant_id")
+  startTime    DateTime @map("start_time")
+  endTime      DateTime @map("end_time")
+  isBooked     Boolean  @default(false) @map("is_booked")
+
+  consultant ConsultantProfile @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  session    Session?
+
+  @@index([consultantId, startTime])
+  @@map("availability_slots")
+}
+
+model Session {
+  id           Int           @id @default(autoincrement())
+  clientId     Int           @map("client_id")
+  consultantId Int           @map("consultant_id")
+  slotId       Int           @unique @map("slot_id")
+  status       SessionStatus @default(pending)
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  client     User              @relation("ClientSessions", fields: [clientId], references: [id])
+  consultant ConsultantProfile @relation("ConsultantSessions", fields: [consultantId], references: [id])
+  slot       AvailabilitySlot  @relation(fields: [slotId], references: [id])
+
+  @@index([clientId])
+  @@index([consultantId, status])
+  @@map("sessions")
+}

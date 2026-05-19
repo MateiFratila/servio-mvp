@@ -1,12 +1,9 @@
 import { useState } from 'react'
+import { useGetAllSessionsQuery, useForceDeleteSessionMutation } from './toolsApi'
 
-const PLACEHOLDER_SESSIONS = [
-  { id: 4821, client: 'Client B', consultant: 'Lorem Ipsum', date: '20 May 2026', status: 'pending' },
-  { id: 4820, client: 'Ipsum Corp', consultant: 'Dolor Sit', date: '22 May 2026', status: 'confirmed' },
-  { id: 4819, client: 'Dolor Ltd', consultant: 'Amet Consult', date: '25 May 2026', status: 'confirmed' },
-  { id: 4818, client: 'Sit Advisory', consultant: 'Lorem Ipsum', date: '10 May 2026', status: 'completed' },
-  { id: 4817, client: 'Amet Holdings', consultant: 'Consectetur Adv.', date: '05 May 2026', status: 'cancelled' },
-]
+function fmtDateTime(iso) {
+  return new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
 const STATUSES = ['All', 'pending', 'confirmed', 'completed', 'cancelled']
 
@@ -19,15 +16,11 @@ const STATUS_BADGE = {
 
 export default function AllSessionsTab() {
   const [statusFilter, setStatusFilter] = useState('All')
-  const [sessions, setSessions] = useState(PLACEHOLDER_SESSIONS)
-  // TODO: const { data: sessions = [] } = useGetAllSessionsQuery({ status: statusFilter !== 'All' ? statusFilter : undefined })
-  // TODO: const [forceDelete] = useForceDeleteSessionMutation()
-
-  function forceCancel(id) {
-    setSessions((prev) => prev.map((s) => s.id === id ? { ...s, status: 'cancelled' } : s))
-  }
-
-  const filtered = sessions.filter((s) => statusFilter === 'All' ? true : s.status === statusFilter)
+  const { data, isLoading } = useGetAllSessionsQuery(
+    statusFilter !== 'All' ? { status: statusFilter } : {}
+  )
+  const [forceDelete] = useForceDeleteSessionMutation()
+  const sessions = data?.data ?? []
 
   return (
     <div className="card">
@@ -47,41 +40,47 @@ export default function AllSessionsTab() {
         </div>
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Session ID</th>
-              <th>Client</th>
-              <th>Consultant</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((s) => (
-              <tr key={s.id}>
-                <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>#{s.id}</td>
-                <td>{s.client}</td>
-                <td style={{ fontWeight: 500 }}>{s.consultant}</td>
-                <td style={{ color: 'var(--text-muted)' }}>{s.date}</td>
-                <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
-                <td>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-secondary btn-sm">View</button>
-                    {s.status !== 'cancelled' && s.status !== 'completed' && (
-                      <button className="btn btn-danger btn-sm" onClick={() => forceCancel(s.id)}>
-                        Force-cancel
-                      </button>
-                    )}
-                  </div>
-                </td>
+      {isLoading ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading…</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Session ID</th>
+                <th>Client</th>
+                <th>Consultant</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {sessions.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>#{s.id}</td>
+                  <td>{s.client?.email ?? '—'}</td>
+                  <td style={{ fontWeight: 500 }}>{s.consultant?.displayName ?? '—'}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{fmtDateTime(s.slot?.startTime)}</td>
+                  <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {s.status !== 'cancelled' && s.status !== 'completed' && (
+                        <button className="btn btn-danger btn-sm" onClick={() => forceDelete(s.id)}>
+                          Force-cancel
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {sessions.length === 0 && (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>No sessions.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

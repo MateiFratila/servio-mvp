@@ -1,25 +1,25 @@
 import { useState } from 'react'
 import ConsultantCard from './ConsultantCard'
+import { useGetConsultantsQuery } from './catalogueApi'
 
 const SPECIALISATIONS = ['Tax Law', 'VAT Compliance', 'Payroll', 'Audit', 'Corporate Finance', 'Estate Planning']
-
-const PLACEHOLDER_CONSULTANTS = [
-  { id: 1, displayName: 'Lorem Ipsum', specialisation: 'Tax Law', bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.', hourlyRate: 90, avatarUrl: null },
-  { id: 2, displayName: 'Dolor Sit', specialisation: 'VAT Compliance', bio: 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.', hourlyRate: 75, avatarUrl: null },
-  { id: 3, displayName: 'Amet Consult', specialisation: 'Payroll', bio: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.', hourlyRate: 80, avatarUrl: null },
-  { id: 4, displayName: 'Consectetur Adv.', specialisation: 'Audit', bio: 'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.', hourlyRate: 110, avatarUrl: null },
-  { id: 5, displayName: 'Adipiscing Elite', specialisation: 'Corporate Finance', bio: 'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium totam rem.', hourlyRate: 120, avatarUrl: null },
-  { id: 6, displayName: 'Eiusmod Tempor', specialisation: 'Estate Planning', bio: 'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit sed consequuntur magni dolores.', hourlyRate: 95, avatarUrl: null },
-]
 
 export default function CataloguePage() {
   const [selectedSpecs, setSelectedSpecs] = useState([])
   const [maxRate, setMaxRate] = useState(300)
   const [availableOnly, setAvailableOnly] = useState(false)
-  const [sortBy, setSortBy] = useState('relevance')
+  const [sortBy, setSortBy] = useState('displayName')
 
-  // TODO: replace with useGetConsultantsQuery({ specs, maxRate, sortBy })
-  const consultants = PLACEHOLDER_CONSULTANTS
+  const { data, isLoading } = useGetConsultantsQuery({
+    ...(selectedSpecs.length && { specialisation: selectedSpecs.join(',') }),
+    ...(maxRate < 300 && { maxRate }),
+    ...(availableOnly && { availableToday: 'true' }),
+    sortBy: sortBy === 'relevance' ? 'displayName' : sortBy === 'name' ? 'displayName' : 'hourlyRate',
+    order: sortBy === 'rate-desc' ? 'desc' : 'asc',
+    limit: 50,
+  })
+
+  const consultants = data?.data ?? []
 
   function toggleSpec(spec) {
     setSelectedSpecs((prev) =>
@@ -27,29 +27,23 @@ export default function CataloguePage() {
     )
   }
 
-  const filtered = consultants.filter((c) => {
-    if (selectedSpecs.length && !selectedSpecs.includes(c.specialisation)) return false
-    if (c.hourlyRate > maxRate) return false
-    return true
-  })
+  // client-side name sort isn't needed since server handles it, but keep rate sort for desc
+  const sorted = sortBy === 'rate-desc'
+    ? [...consultants].sort((a, b) => b.hourlyRate - a.hourlyRate)
+    : consultants
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'rate-asc') return a.hourlyRate - b.hourlyRate
-    if (sortBy === 'rate-desc') return b.hourlyRate - a.hourlyRate
-    if (sortBy === 'name') return a.displayName.localeCompare(b.displayName)
-    return 0
-  })
-
-  const avgRate = Math.round(consultants.reduce((s, c) => s + c.hourlyRate, 0) / consultants.length)
+  const avgRate = consultants.length
+    ? Math.round(consultants.reduce((s, c) => s + Number(c.hourlyRate), 0) / consultants.length)
+    : 0
 
   return (
     <div style={{ flex: 1 }}>
       {/* Stat bar */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="container" style={{ display: 'flex', gap: 40, padding: '16px 24px' }}>
-          <Stat label="Available consultants" value={consultants.length} />
+          <Stat label="Available consultants" value={data?.total ?? '—'} />
           <Stat label="Specialisations" value={SPECIALISATIONS.length} />
-          <Stat label="Avg. hourly rate" value={`€${avgRate}`} />
+          <Stat label="Avg. hourly rate" value={avgRate ? `€${avgRate}` : '—'} />
         </div>
       </div>
 
@@ -108,15 +102,21 @@ export default function CataloguePage() {
 
         {/* Grid */}
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-            {sorted.map((c) => (
-              <ConsultantCard key={c.id} consultant={c} />
-            ))}
-          </div>
-          {sorted.length === 0 && (
-            <p style={{ color: 'var(--text-muted)', marginTop: 32, textAlign: 'center' }}>
-              No consultants match your filters.
-            </p>
+          {isLoading ? (
+            <p style={{ color: 'var(--text-muted)', marginTop: 32, textAlign: 'center' }}>Loading…</p>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+                {sorted.map((c) => (
+                  <ConsultantCard key={c.id} consultant={c} />
+                ))}
+              </div>
+              {sorted.length === 0 && (
+                <p style={{ color: 'var(--text-muted)', marginTop: 32, textAlign: 'center' }}>
+                  No consultants match your filters.
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>

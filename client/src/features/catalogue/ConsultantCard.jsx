@@ -33,7 +33,7 @@ export default function ConsultantCard({ consultant }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
         <span style={{ fontWeight: 600, color: 'var(--text)' }}>€{hourlyRate} / hr</span>
-        <button className="btn btn-primary btn-sm" onClick={() => navigate(`/catalogue/${id}`)}>
+        <button className="btn btn-primary btn-sm" onClick={() => navigate(`/catalog/${id}`)}>
           View Profile
         </button>
       </div>

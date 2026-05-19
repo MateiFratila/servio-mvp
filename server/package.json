@@ -4,14 +4,27 @@
   "version": "0.0.1",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "db:migrate": "dotenv -e ../.env prisma migrate dev --schema=prisma/schema.prisma",
+    "db:deploy": "dotenv -e ../.env prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:studio": "dotenv -e ../.env prisma studio --schema=prisma/schema.prisma",
+    "db:seed": "dotenv -e ../.env prisma db seed --schema=prisma/schema.prisma"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
-    "express": "^4.21.0"
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "dotenv-cli": "^11.0.0",
+    "nodemon": "^3.1.0",
+    "prisma": "^5.22.0"
   }
 }

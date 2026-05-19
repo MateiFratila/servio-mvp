@@ -1,9 +1,8 @@
-// TODO: replace PLACEHOLDER_SESSIONS with useGetMySessionsAsClientQuery()
-const PLACEHOLDER_SESSIONS = [
-  { id: 4821, consultant: 'Lorem Ipsum', dateTime: '20 May 2026, 10:30', status: 'pending' },
-  { id: 4820, consultant: 'Dolor Sit', dateTime: '25 May 2026, 14:00', status: 'confirmed' },
-  { id: 4819, consultant: 'Amet Consult', dateTime: '02 Jun 2026, 09:00', status: 'completed' },
-]
+import { useGetMySessionsAsClientQuery, useCancelSessionMutation } from './catalogueApi'
+
+function fmtDateTime(iso) {
+  return new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
 const STATUS_BADGE = {
   pending: 'badge status-pending',
@@ -13,39 +12,51 @@ const STATUS_BADGE = {
 }
 
 export default function MySessionsPanel() {
-  const sessions = PLACEHOLDER_SESSIONS
-  // TODO: const { data: sessions = [] } = useGetMySessionsAsClientQuery()
-  // TODO: const [cancelSession] = useCancelSessionMutation()
+  const { data, isLoading } = useGetMySessionsAsClientQuery()
+  const [cancelSession, { isLoading: cancelling }] = useCancelSessionMutation()
+  const sessions = data?.data ?? []
 
   return (
     <div className="card">
       <h3 className="section-title">My Sessions</h3>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Consultant</th>
-              <th>Date &amp; Time</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.map((s) => (
-              <tr key={s.id}>
-                <td style={{ fontWeight: 500 }}>{s.consultant}</td>
-                <td style={{ color: 'var(--text-muted)' }}>{s.dateTime}</td>
-                <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
-                <td>
-                  {(s.status === 'pending' || s.status === 'confirmed') && (
-                    <button className="btn btn-danger btn-sm">Cancel</button>
-                  )}
-                </td>
+      {isLoading ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading…</p>
+      ) : sessions.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No sessions yet.</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Consultant</th>
+                <th>Date &amp; Time</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {sessions.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ fontWeight: 500 }}>{s.consultant?.displayName ?? '—'}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{fmtDateTime(s.slot?.startTime)}</td>
+                  <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
+                  <td>
+                    {(s.status === 'pending' || s.status === 'confirmed') && (
+                      <button
+                        className="btn btn-danger btn-sm"
+                        disabled={cancelling}
+                        onClick={() => cancelSession(s.id)}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

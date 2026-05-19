@@ -13,6 +13,10 @@ export const catalogueApi = api.injectEndpoints({
       query: (id) => `/consultants/${id}`,
       providesTags: (_res, _err, id) => [{ type: 'Consultant', id }],
     }),
+    getConsultantSlots: build.query({
+      query: ({ consultantId, date }) => `/consultants/${consultantId}/slots?date=${date}`,
+      providesTags: ['Slot'],
+    }),
     getMySessionsAsClient: build.query({
       query: () => '/sessions',
       providesTags: ['Session'],
@@ -31,6 +35,7 @@ export const catalogueApi = api.injectEndpoints({
 export const {
   useGetConsultantsQuery,
   useGetConsultantQuery,
+  useGetConsultantSlotsQuery,
   useGetMySessionsAsClientQuery,
   useBookSessionMutation,
   useCancelSessionMutation,
