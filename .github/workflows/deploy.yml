@@ -36,19 +36,20 @@ jobs:
         working-directory: server
         run: npx prisma generate --schema=prisma/schema.prisma
 
-      # Drop dev-only packages from server/node_modules to keep the artifact lean
-      - name: Prune server dev dependencies
-        working-directory: server
+      # Drop dev-only packages from root node_modules (client build tools, nodemon, etc.)
+      # Must run AFTER the client build step so vite/etc. are still available during build.
+      - name: Prune dev dependencies
         run: npm prune --omit=dev
 
       # Package only what the server needs at runtime:
-      #   - root package.json  (for `npm start`)
-      #   - server/src + prisma + package.json + prod node_modules
-      #   - client/dist        (served as static files by Express)
+      #   - root package.json + node_modules (hoisted by npm workspaces — contains express, prisma, etc.)
+      #   - server/src + prisma + package.json + its own node_modules (anything not hoisted)
+      #   - client/dist (served as static files by Express)
       - name: Create deployment zip
         run: |
           zip -r release.zip \
             package.json \
+            node_modules \
             server/src \
             server/prisma \
             server/package.json \
