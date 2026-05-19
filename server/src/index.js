@@ -1,4 +1,6 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') })
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') })
+}
 const app = require('./app')
 
 const PORT = process.env.PORT || 3000
