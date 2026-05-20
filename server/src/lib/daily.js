@@ -20,7 +20,7 @@ async function createRoom({ name, exp }) {
       properties: {
         exp: Math.floor(exp / 1000),
         enable_chat: true,
-        enable_screenshare: false,
+        enable_screenshare: true,
         start_video_off: false,
         start_audio_off: false,
       },
