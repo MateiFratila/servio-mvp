@@ -1,10 +1,7 @@
 import { useState } from 'react'
-import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { Elements } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
+import { PaymentElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js'
+import stripePromise from '../../lib/stripe'
 import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation } from './catalogueApi'
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
 function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })

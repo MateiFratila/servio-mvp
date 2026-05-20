@@ -98,3 +98,11 @@ model Session {
   @@index([consultantId, status])
   @@map("sessions")
 }
+
+model SystemSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
