@@ -1,6 +1,7 @@
 const { Router } = require('express')
 const prisma = require('../db')
 const { authenticate, authorize } = require('../middleware/authenticate')
+const { createMeetingToken } = require('../lib/daily')
 
 const router = Router()
 
@@ -163,6 +164,41 @@ router.patch('/:id', authorize('consultant', 'admin'), async (req, res, next) =>
       include: SESSION_INCLUDE,
     })
     res.json(updated)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/sessions/:id/meeting-token — generate a Daily.co token for a session participant
+router.get('/:id/meeting-token', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: { slot: true, client: { select: { email: true } }, consultant: { select: { displayName: true, userId: true } } },
+    })
+    if (!session) return res.status(404).json({ error: 'Session not found' })
+    if (!session.dailyRoomName) return res.status(409).json({ error: 'Meeting room is not ready yet' })
+
+    // Only the client or the consultant of this session may get a token
+    const isClient = session.clientId === req.user.id
+    const isConsultant = session.consultant.userId === req.user.id
+    if (!isClient && !isConsultant && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+
+    const userName = isConsultant ? session.consultant.displayName : session.client.email
+    const expMs = new Date(session.slot.endTime).getTime() + 30 * 60 * 1000
+
+    const { token } = await createMeetingToken({
+      roomName: session.dailyRoomName,
+      userName,
+      exp: expMs,
+    })
+
+    res.json({ token })
   } catch (err) {
     next(err)
   }

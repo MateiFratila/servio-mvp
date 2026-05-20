@@ -1,6 +1,7 @@
 const { Router } = require('express')
 const prisma = require('../db')
 const stripe = require('../lib/stripe')
+const { createRoom } = require('../lib/daily')
 const { authenticate } = require('../middleware/authenticate')
 
 const router = Router()
@@ -110,10 +111,35 @@ router.post('/webhook', async (req, res) => {
 
   if (event.type === 'payment_intent.succeeded') {
     const intent = event.data.object
+
+    // Mark session as confirmed + paid
     await prisma.session.updateMany({
       where: { stripePaymentIntentId: intent.id },
       data: { paymentStatus: 'paid', status: 'confirmed' },
     })
+
+    // Fetch session with slot so we can set room expiry to slot end + 30-min grace
+    const session = await prisma.session.findFirst({
+      where: { stripePaymentIntentId: intent.id },
+      include: { slot: true },
+    })
+
+    if (session) {
+      try {
+        const expMs = new Date(session.slot.endTime).getTime() + 30 * 60 * 1000
+        const room = await createRoom({
+          name: `servio-session-${session.id}`,
+          exp: expMs,
+        })
+        await prisma.session.update({
+          where: { id: session.id },
+          data: { meetingUrl: room.url, dailyRoomName: room.name },
+        })
+      } catch (err) {
+        // Room creation failure must not fail the webhook — session is still confirmed
+        console.error('[daily] room creation failed for session', session.id, err.message)
+      }
+    }
   }
 
   if (event.type === 'payment_intent.payment_failed') {

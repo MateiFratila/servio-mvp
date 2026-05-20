@@ -87,6 +87,8 @@ model Session {
   notes                 String?       @db.Text
   stripePaymentIntentId String?       @map("stripe_payment_intent_id")
   paymentStatus         String        @default("unpaid") @map("payment_status")
+  meetingUrl            String?       @map("meeting_url")
+  dailyRoomName         String?       @map("daily_room_name")
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
 

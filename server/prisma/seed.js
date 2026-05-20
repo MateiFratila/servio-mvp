@@ -74,14 +74,14 @@ async function main() {
     }),
   ])
 
-  // ── Availability slots (next 7 days at fixed times) ───────────────────────
-  const slotTimes = [9, 10.5, 14, 16.5] // hours
+  // ── Availability slots (next 14 days at fixed times) ────────────────────
+  const slotTimes = [9, 10.5, 12, 13.5, 15, 16.5] // hours
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   const slotData = []
   for (const profile of [profile1, profile2]) {
-    for (let day = 1; day <= 5; day++) {
+    for (let day = 1; day <= 14; day++) {
       for (const hour of slotTimes) {
         const start = new Date(today)
         start.setDate(today.getDate() + day)
@@ -97,6 +97,9 @@ async function main() {
   const existingSlots = await prisma.availabilitySlot.count()
   if (existingSlots === 0) {
     await prisma.availabilitySlot.createMany({ data: slotData })
+    console.log(`  ${slotData.length} availability slots created`)
+  } else {
+    console.log(`  Slots already exist (${existingSlots}), skipping slot creation`)
   }
 
   console.log('Seed complete:')

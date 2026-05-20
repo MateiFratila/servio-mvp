@@ -5,11 +5,12 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "db:migrate": "dotenv -e ../.env prisma migrate dev --schema=prisma/schema.prisma",
-    "db:deploy": "dotenv -e ../.env prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:migrate": "dotenv -e ../.env -- prisma migrate dev --schema=prisma/schema.prisma",
+    "db:deploy": "dotenv -e ../.env -- prisma migrate deploy --schema=prisma/schema.prisma",
     "db:generate": "prisma generate --schema=prisma/schema.prisma",
-    "db:studio": "dotenv -e ../.env prisma studio --schema=prisma/schema.prisma",
-    "db:seed": "dotenv -e ../.env prisma db seed --schema=prisma/schema.prisma"
+    "db:studio": "dotenv -e ../.env -- prisma studio --schema=prisma/schema.prisma",
+    "db:seed": "dotenv -e ../.env -- prisma db seed --schema=prisma/schema.prisma",
+    "db:clear": "dotenv -e ../.env -- node prisma/clear.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
