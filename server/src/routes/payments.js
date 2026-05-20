@@ -1,0 +1,124 @@
+const { Router } = require('express')
+const prisma = require('../db')
+const stripe = require('../lib/stripe')
+const { authenticate } = require('../middleware/authenticate')
+
+const router = Router()
+
+// POST /api/payments/create-intent
+// Creates a PaymentIntent and a pending session row.
+// Body: { consultantId, slotId, notes? }
+router.post('/create-intent', authenticate, async (req, res, next) => {
+  try {
+    const { consultantId, slotId, notes } = req.body
+    if (!consultantId || !slotId) {
+      return res.status(400).json({ error: 'consultantId and slotId are required' })
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Validate slot
+      const slot = await tx.availabilitySlot.findUnique({ where: { id: parseInt(slotId) } })
+      if (!slot) return { error: 'Slot not found', status: 404 }
+      if (slot.isBooked) return { error: 'Slot is no longer available', status: 409 }
+      if (slot.consultantId !== parseInt(consultantId)) {
+        return { error: 'Slot does not belong to this consultant', status: 400 }
+      }
+
+      // Get hourly rate from consultant profile
+      const profile = await tx.consultantProfile.findUnique({
+        where: { id: parseInt(consultantId) },
+        select: { id: true, displayName: true, hourlyRate: true },
+      })
+      if (!profile) return { error: 'Consultant not found', status: 404 }
+
+      // Reserve slot
+      await tx.availabilitySlot.update({ where: { id: slot.id }, data: { isBooked: true } })
+
+      // Calculate amount in smallest unit (bani: 1 RON = 100 bani)
+      const slotDurationMs = new Date(slot.endTime) - new Date(slot.startTime)
+      const slotDurationHours = slotDurationMs / (1000 * 60 * 60)
+      const amountInBani = Math.round(Number(profile.hourlyRate) * slotDurationHours * 100)
+
+      // Create Stripe PaymentIntent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInBani,
+        currency: 'ron',
+        metadata: {
+          consultantId: String(profile.id),
+          slotId: String(slot.id),
+          clientId: String(req.user.id),
+        },
+      })
+
+      // Create session row with unpaid status
+      const session = await tx.session.create({
+        data: {
+          clientId: req.user.id,
+          consultantId: profile.id,
+          slotId: slot.id,
+          notes: notes ?? null,
+          status: 'pending',
+          paymentStatus: 'unpaid',
+          stripePaymentIntentId: paymentIntent.id,
+        },
+      })
+
+      return { clientSecret: paymentIntent.client_secret, sessionId: session.id }
+    })
+
+    if (result.error) {
+      return res.status(result.status).json({ error: result.error })
+    }
+
+    res.json(result)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/payments/webhook
+// Receives Stripe events. Must receive raw body (registered before express.json()).
+router.post('/webhook', async (req, res) => {
+  const sig = req.headers['stripe-signature']
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+  let event
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret)
+  } catch (err) {
+    return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` })
+  }
+
+  if (event.type === 'payment_intent.succeeded') {
+    const intent = event.data.object
+    await prisma.session.updateMany({
+      where: { stripePaymentIntentId: intent.id },
+      data: { paymentStatus: 'paid', status: 'confirmed' },
+    })
+  }
+
+  if (event.type === 'payment_intent.payment_failed') {
+    const intent = event.data.object
+    // Release the slot and mark session cancelled
+    const session = await prisma.session.findFirst({
+      where: { stripePaymentIntentId: intent.id },
+      select: { id: true, slotId: true },
+    })
+    if (session) {
+      await prisma.$transaction([
+        prisma.session.update({
+          where: { id: session.id },
+          data: { paymentStatus: 'failed', status: 'cancelled' },
+        }),
+        prisma.availabilitySlot.update({
+          where: { id: session.slotId },
+          data: { isBooked: false },
+        }),
+      ])
+    }
+  }
+
+  res.json({ received: true })
+})
+
+module.exports = router

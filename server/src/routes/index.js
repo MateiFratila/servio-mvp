@@ -5,6 +5,7 @@ const usersRouter = require('./users')
 const consultantsRouter = require('./consultants')
 const sessionsRouter = require('./sessions')
 const adminRouter = require('./admin')
+const paymentsRouter = require('./payments')
 
 const router = Router()
 
@@ -14,5 +15,6 @@ router.use('/users', usersRouter)
 router.use('/consultants', consultantsRouter)
 router.use('/sessions', sessionsRouter)
 router.use('/admin', adminRouter)
+router.use('/payments', paymentsRouter)
 
 module.exports = router

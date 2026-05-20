@@ -79,14 +79,16 @@ model AvailabilitySlot {
 }
 
 model Session {
-  id           Int           @id @default(autoincrement())
-  clientId     Int           @map("client_id")
-  consultantId Int           @map("consultant_id")
-  slotId       Int           @unique @map("slot_id")
-  status       SessionStatus @default(pending)
-  notes        String?       @db.Text
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id                    Int           @id @default(autoincrement())
+  clientId              Int           @map("client_id")
+  consultantId          Int           @map("consultant_id")
+  slotId                Int           @unique @map("slot_id")
+  status                SessionStatus @default(pending)
+  notes                 String?       @db.Text
+  stripePaymentIntentId String?       @map("stripe_payment_intent_id")
+  paymentStatus         String        @default("unpaid") @map("payment_status")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
 
   client     User              @relation("ClientSessions", fields: [clientId], references: [id])
   consultant ConsultantProfile @relation("ConsultantSessions", fields: [consultantId], references: [id])
