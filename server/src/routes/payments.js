@@ -19,10 +19,29 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
       // Validate slot
       const slot = await tx.availabilitySlot.findUnique({ where: { id: parseInt(slotId) } })
       if (!slot) return { error: 'Slot not found', status: 404 }
-      if (slot.isBooked) return { error: 'Slot is no longer available', status: 409 }
       if (slot.consultantId !== parseInt(consultantId)) {
         return { error: 'Slot does not belong to this consultant', status: 400 }
       }
+
+      // Check for an existing session on this slot
+      const existingSession = await tx.session.findUnique({ where: { slotId: slot.id } })
+
+      // If there's already an unpaid session belonging to this client, reuse it
+      if (existingSession && existingSession.paymentStatus === 'unpaid' && existingSession.clientId === req.user.id) {
+        const intent = await stripe.paymentIntents.retrieve(existingSession.stripePaymentIntentId)
+        return { clientSecret: intent.client_secret, sessionId: existingSession.id }
+      }
+
+      // If there's a cancelled/failed session, delete it so we can start fresh
+      if (existingSession && ['cancelled', 'failed'].includes(existingSession.paymentStatus)) {
+        await tx.session.delete({ where: { id: existingSession.id } })
+      } else if (existingSession) {
+        // Slot is genuinely taken by another client or a confirmed session
+        return { error: 'Slot is no longer available', status: 409 }
+      }
+
+      // Slot must be free at this point — also double-check isBooked for concurrent requests
+      if (slot.isBooked) return { error: 'Slot is no longer available', status: 409 }
 
       // Get hourly rate from consultant profile
       const profile = await tx.consultantProfile.findUnique({
