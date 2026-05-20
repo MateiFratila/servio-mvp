@@ -8,6 +8,7 @@ import LoginPage from './features/auth/LoginPage'
 import AcasaPage from './features/acasa/AcasaPage'
 import ConsultantDetail from './features/catalogue/ConsultantDetail'
 import ToolsPage from './features/tools/ToolsPage'
+import MeetingPage from './features/meeting/MeetingPage'
 
 function RootRedirect() {
   const role = useSelector(selectCurrentRole)
@@ -62,6 +63,15 @@ export default function App() {
                 <ToolsPage />
               </RoleGuard>
             </ProtectedLayout>
+          }
+        />
+
+        <Route
+          path="/meeting/:sessionId"
+          element={
+            <AuthGuard>
+              <MeetingPage />
+            </AuthGuard>
           }
         />
 

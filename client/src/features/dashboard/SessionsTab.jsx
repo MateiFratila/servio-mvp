@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useGetMySessionsAsConsultantQuery, useUpdateSessionStatusMutation } from './dashboardApi'
 
 function fmtDateTime(iso) {
@@ -16,27 +17,41 @@ const STATUS_BADGE = {
 
 export default function SessionsTab() {
   const [statusFilter, setStatusFilter] = useState('All')
-  const { data, isLoading } = useGetMySessionsAsConsultantQuery()
+  const { data, isLoading, refetch, isFetching } = useGetMySessionsAsConsultantQuery()
   const [updateStatus] = useUpdateSessionStatusMutation()
+  const navigate = useNavigate()
 
   const allSessions = data?.data ?? []
   const sessions = statusFilter === 'All' ? allSessions : allSessions.filter((s) => s.status === statusFilter)
+  const hasPendingRoom = allSessions.some((s) => s.status === 'confirmed' && !s.meetingUrl)
 
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 className="section-title" style={{ marginBottom: 0 }}>My Sessions</h3>
-        <div className="tab-bar" style={{ marginBottom: 0, borderBottom: 'none', gap: 4 }}>
-          {STATUSES.map((s) => (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {hasPendingRoom && (
             <button
-              key={s}
-              className={`tab-btn${statusFilter === s ? ' active' : ''}`}
-              style={{ padding: '4px 12px', fontSize: 12 }}
-              onClick={() => setStatusFilter(s)}
+              className="btn btn-secondary btn-sm"
+              disabled={isFetching}
+              onClick={refetch}
+              title="Refresh to check if meeting room is ready"
             >
-              {s}
+              {isFetching ? 'Checking…' : '↻ Refresh'}
             </button>
-          ))}
+          )}
+          <div className="tab-bar" style={{ marginBottom: 0, borderBottom: 'none', gap: 4 }}>
+            {STATUSES.map((s) => (
+              <button
+                key={s}
+                className={`tab-btn${statusFilter === s ? ' active' : ''}`}
+                style={{ padding: '4px 12px', fontSize: 12 }}
+                onClick={() => setStatusFilter(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -65,10 +80,20 @@ export default function SessionsTab() {
                       {s.notes || '—'}
                     </span>
                   </td>
-                  <td>
+                  <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     {s.status === 'pending' && (
                       <button className="btn btn-primary btn-sm" onClick={() => updateStatus({ id: s.id, status: 'confirmed' })}>
                         Confirm
+                      </button>
+                    )}
+                    {s.status === 'confirmed' && !s.meetingUrl && (
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        Setting up room…
+                      </span>
+                    )}
+                    {s.status === 'confirmed' && s.meetingUrl && (
+                      <button className="btn btn-primary btn-sm" onClick={() => navigate(`/meeting/${s.id}`)}>
+                        Join
                       </button>
                     )}
                   </td>

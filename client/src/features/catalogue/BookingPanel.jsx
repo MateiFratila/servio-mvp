@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useDispatch } from 'react-redux'
 import { PaymentElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js'
 import stripePromise from '../../lib/stripe'
 import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation } from './catalogueApi'
+import { api } from '../../services/api'
 
 function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -49,6 +51,7 @@ function PaymentForm({ clientSecret, onSuccess, onCancel }) {
 }
 
 export default function BookingPanel({ consultantId, consultantName }) {
+  const dispatch = useDispatch()
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedSlotId, setSelectedSlotId] = useState(null)
   const [notes, setNotes] = useState('')
@@ -126,7 +129,10 @@ export default function BookingPanel({ consultantId, consultantName }) {
         <Elements stripe={stripePromise} options={{ clientSecret }}>
           <PaymentForm
             clientSecret={clientSecret}
-            onSuccess={() => setConfirmed(true)}
+            onSuccess={() => {
+              dispatch(api.util.invalidateTags(['Session', 'Slot']))
+              setConfirmed(true)
+            }}
             onCancel={handleBack}
           />
         </Elements>

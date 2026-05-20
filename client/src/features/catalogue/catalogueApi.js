@@ -21,6 +21,13 @@ export const catalogueApi = api.injectEndpoints({
       query: () => '/sessions',
       providesTags: ['Session'],
     }),
+    getSession: build.query({
+      query: (id) => `/sessions/${id}`,
+      providesTags: (_res, _err, id) => [{ type: 'Session', id }],
+    }),
+    getMeetingToken: build.query({
+      query: (sessionId) => `/sessions/${sessionId}/meeting-token`,
+    }),
     createPaymentIntent: build.mutation({
       query: (body) => ({ url: '/payments/create-intent', method: 'POST', body }),
     }),
@@ -40,6 +47,8 @@ export const {
   useGetConsultantQuery,
   useGetConsultantSlotsQuery,
   useGetMySessionsAsClientQuery,
+  useGetSessionQuery,
+  useGetMeetingTokenQuery,
   useCreatePaymentIntentMutation,
   useBookSessionMutation,
   useCancelSessionMutation,
