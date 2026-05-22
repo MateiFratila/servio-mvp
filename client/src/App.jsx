@@ -9,6 +9,7 @@ import AcasaPage from './features/acasa/AcasaPage'
 import ConsultantDetail from './features/catalogue/ConsultantDetail'
 import ToolsPage from './features/tools/ToolsPage'
 import MeetingPage from './features/meeting/MeetingPage'
+import SessionDetailPage from './features/meeting/SessionDetailPage'
 
 function RootRedirect() {
   const role = useSelector(selectCurrentRole)
@@ -61,6 +62,17 @@ export default function App() {
             <ProtectedLayout>
               <RoleGuard allowed={['admin']}>
                 <ToolsPage />
+              </RoleGuard>
+            </ProtectedLayout>
+          }
+        />
+
+        <Route
+          path="/sessions/:sessionId"
+          element={
+            <ProtectedLayout>
+              <RoleGuard allowed={['client', 'consultant', 'admin']}>
+                <SessionDetailPage />
               </RoleGuard>
             </ProtectedLayout>
           }

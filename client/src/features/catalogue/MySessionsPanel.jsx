@@ -58,6 +58,12 @@ export default function MySessionsPanel() {
                   <td style={{ color: 'var(--text-muted)' }}>{fmtDateTime(s.slot?.startTime)}</td>
                   <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => navigate(`/sessions/${s.id}`)}
+                    >
+                      See Details
+                    </button>
                     {s.status === 'confirmed' && !s.meetingUrl && (
                       <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
                         Setting up room…

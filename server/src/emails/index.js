@@ -8,7 +8,7 @@ const reviewRequest = require('./templates/reviewRequest')
 
 const DEFAULT_SENDER = {
   name: process.env.EMAIL_SENDER_NAME || 'Servio',
-  email: process.env.EMAIL_SENDER_ADDRESS || 'noreply@servio.ro',
+  email: process.env.EMAIL_SENDER_ADDRESS || 'office@servio.ro',
 }
 
 /**
