@@ -39,8 +39,9 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  profile  ConsultantProfile?
-  sessions Session[]          @relation("ClientSessions")
+  profile            ConsultantProfile?
+  sessions           Session[]          @relation("ClientSessions")
+  uploadedDocuments  SessionDocument[]  @relation("DocumentUploader")
 
   @@map("users")
 }
@@ -95,6 +96,7 @@ model Session {
   client     User              @relation("ClientSessions", fields: [clientId], references: [id])
   consultant ConsultantProfile @relation("ConsultantSessions", fields: [consultantId], references: [id])
   slot       AvailabilitySlot  @relation(fields: [slotId], references: [id])
+  documents  SessionDocument[]
 
   @@index([clientId])
   @@index([consultantId, status])
@@ -107,4 +109,21 @@ model SystemSetting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
+}
+
+model SessionDocument {
+  id          Int      @id @default(autoincrement())
+  sessionId   Int      @map("session_id")
+  filename    String
+  contentType String   @map("content_type")
+  blobName    String   @map("blob_name") @db.Text
+  sizeBytes   Int      @map("size_bytes")
+  uploadedBy  Int      @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  session  Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  uploader User    @relation("DocumentUploader", fields: [uploadedBy], references: [id])
+
+  @@index([sessionId])
+  @@map("session_documents")
 }

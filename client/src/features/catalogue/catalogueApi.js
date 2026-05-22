@@ -39,6 +39,25 @@ export const catalogueApi = api.injectEndpoints({
       query: (id) => ({ url: `/sessions/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Session', 'Slot'],
     }),
+    getSessionDocuments: build.query({
+      query: (sessionId) => `/sessions/${sessionId}/documents`,
+      providesTags: (_res, _err, sessionId) => [{ type: 'SessionDocument', id: sessionId }],
+    }),
+    uploadDocument: build.mutation({
+      query: ({ sessionId, file }) => {
+        const body = new FormData()
+        body.append('file', file)
+        return { url: `/sessions/${sessionId}/documents`, method: 'POST', body }
+      },
+      invalidatesTags: (_res, _err, { sessionId }) => [{ type: 'SessionDocument', id: sessionId }],
+    }),
+    deleteDocument: build.mutation({
+      query: ({ sessionId, docId }) => ({
+        url: `/sessions/${sessionId}/documents/${docId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _err, { sessionId }) => [{ type: 'SessionDocument', id: sessionId }],
+    }),
   }),
 })
 
@@ -52,4 +71,7 @@ export const {
   useCreatePaymentIntentMutation,
   useBookSessionMutation,
   useCancelSessionMutation,
+  useGetSessionDocumentsQuery,
+  useUploadDocumentMutation,
+  useDeleteDocumentMutation,
 } = catalogueApi

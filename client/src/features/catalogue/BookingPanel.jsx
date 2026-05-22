@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useDispatch } from 'react-redux'
 import { PaymentElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js'
 import stripePromise from '../../lib/stripe'
-import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation } from './catalogueApi'
+import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation, useUploadDocumentMutation } from './catalogueApi'
 import { api } from '../../services/api'
 
 function fmtTime(iso) {
@@ -52,12 +52,15 @@ function PaymentForm({ clientSecret, onSuccess, onCancel }) {
 
 export default function BookingPanel({ consultantId, consultantName }) {
   const dispatch = useDispatch()
+  const fileInputRef = useRef(null)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedSlotId, setSelectedSlotId] = useState(null)
   const [notes, setNotes] = useState('')
+  const [files, setFiles] = useState([])
   const [clientSecret, setClientSecret] = useState(null)
   const [confirmed, setConfirmed] = useState(false)
   const [intentError, setIntentError] = useState('')
+  const [uploadError, setUploadError] = useState('')
 
   const { data: slots = [], isFetching: slotsLoading } = useGetConsultantSlotsQuery(
     { consultantId, date: selectedDate },
@@ -65,32 +68,61 @@ export default function BookingPanel({ consultantId, consultantName }) {
   )
 
   const [createPaymentIntent, { isLoading: creatingIntent }] = useCreatePaymentIntentMutation()
+  const [uploadDocument] = useUploadDocumentMutation()
 
   async function handleProceedToPayment() {
     if (!selectedSlotId) return
     setIntentError('')
+    setUploadError('')
     try {
-      const { clientSecret: secret } = await createPaymentIntent({
+      const { clientSecret: secret, sessionId } = await createPaymentIntent({
         consultantId,
         slotId: selectedSlotId,
         notes,
       }).unwrap()
+
+      if (files.length > 0) {
+        const results = await Promise.allSettled(
+          files.map((file) => uploadDocument({ sessionId, file }).unwrap())
+        )
+        const failed = results.filter((r) => r.status === 'rejected')
+        if (failed.length > 0) {
+          setUploadError(`${failed.length} file(s) failed to upload and were skipped.`)
+        }
+      }
+
       setClientSecret(secret)
     } catch (err) {
       setIntentError(err?.data?.error ?? 'Could not initiate payment. Please try again.')
     }
   }
 
+  function handleFileChange(e) {
+    const selected = Array.from(e.target.files)
+    setFiles((prev) => {
+      const combined = [...prev, ...selected].slice(0, 5)
+      return combined
+    })
+    // Reset input so the same file can be re-added after removal
+    e.target.value = ''
+  }
+
+  function removeFile(index) {
+    setFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
   function handleDateChange(value) {
     setSelectedDate(value)
     setSelectedSlotId(null)
     setIntentError('')
+    setUploadError('')
     setClientSecret(null)
   }
 
   function handleBack() {
     setClientSecret(null)
     setIntentError('')
+    setUploadError('')
   }
 
   if (confirmed) {
@@ -110,6 +142,7 @@ export default function BookingPanel({ consultantId, consultantName }) {
               setSelectedDate('')
               setSelectedSlotId(null)
               setNotes('')
+              setFiles([])
               setClientSecret(null)
             }}
           >
@@ -197,8 +230,69 @@ export default function BookingPanel({ consultantId, consultantName }) {
         />
       </div>
 
+      {/* Document attachments */}
+      <div className="form-group">
+        <label>Attachments (optional)</label>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, marginTop: 2 }}>
+          PDF, Word, Excel, or images — up to 5 files, 10 MB each
+        </p>
+        {files.length > 0 && (
+          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {files.map((f, i) => (
+              <li
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: 13,
+                  background: 'var(--surface-2, #f4f4f5)',
+                  borderRadius: 6,
+                  padding: '4px 8px',
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%' }}>
+                  {f.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(i)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16, lineHeight: 1 }}
+                  aria-label={`Remove ${f.name}`}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {files.length < 5 && (
+          <>
+            <input
+              ref={fileInputRef}
+              id="session-files"
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              + Add file
+            </button>
+          </>
+        )}
+      </div>
+
       {intentError && (
         <p style={{ fontSize: 13, color: 'var(--red, #ef4444)' }}>{intentError}</p>
+      )}
+      {uploadError && (
+        <p style={{ fontSize: 13, color: 'var(--yellow, #f59e0b)' }}>{uploadError}</p>
       )}
 
       <button
@@ -206,7 +300,11 @@ export default function BookingPanel({ consultantId, consultantName }) {
         disabled={!selectedDate || !selectedSlotId || creatingIntent}
         onClick={handleProceedToPayment}
       >
-        {creatingIntent ? 'Preparing payment…' : 'Continue to Payment'}
+        {creatingIntent
+          ? files.length > 0
+            ? 'Uploading…'
+            : 'Preparing payment…'
+          : 'Continue to Payment'}
       </button>
     </div>
   )

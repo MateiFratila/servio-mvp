@@ -31,4 +31,12 @@ if (process.env.NODE_ENV === 'production') {
   })
 }
 
+// Global error handler — always return JSON for API errors
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  const status = err.status || err.statusCode || 500
+  const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Internal server error')
+  res.status(status).json({ error: message })
+})
+
 module.exports = app
