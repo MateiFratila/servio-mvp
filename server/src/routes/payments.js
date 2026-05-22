@@ -3,6 +3,7 @@ const prisma = require('../db')
 const stripe = require('../lib/stripe')
 const { createRoom } = require('../lib/daily')
 const { authenticate } = require('../middleware/authenticate')
+const { sendBookingPendingConfirmation } = require('../emails')
 
 const router = Router()
 
@@ -118,10 +119,14 @@ router.post('/webhook', async (req, res) => {
       data: { paymentStatus: 'paid', status: 'confirmed' },
     })
 
-    // Fetch session with slot so we can set room expiry to slot end + 30-min grace
+    // Fetch session with slot, client and consultant so we can create the room and send notifications
     const session = await prisma.session.findFirst({
       where: { stripePaymentIntentId: intent.id },
-      include: { slot: true },
+      include: {
+        slot: true,
+        client: true,
+        consultant: { include: { user: true } },
+      },
     })
 
     if (session) {
@@ -138,6 +143,26 @@ router.post('/webhook', async (req, res) => {
       } catch (err) {
         // Room creation failure must not fail the webhook — session is still confirmed
         console.error('[daily] room creation failed for session', session.id, err.message)
+      }
+
+      try {
+        const appUrl = process.env.APP_URL || 'http://localhost:5173'
+        const bookingUrl = ` `
+        const startTime = new Date(session.slot.startTime)
+        const sessionDate = startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })
+        const sessionTime = startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
+
+        await sendBookingPendingConfirmation({
+          consultantEmail: session.consultant.user.email,
+          consultantName: session.consultant.displayName,
+          clientName: session.client.email,
+          sessionDate,
+          sessionTime,
+          bookingUrl,
+        })
+      } catch (err) {
+        // Email failure must not fail the webhook
+        console.error('[email] sendBookingPendingConfirmation failed for session', session.id, err.message)
       }
     }
   }
