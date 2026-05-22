@@ -7,6 +7,7 @@ function fmtDateTime(iso) {
 
 const STATUS_BADGE = {
   pending: 'badge status-pending',
+  pending_confirmation: 'badge status-pending',
   confirmed: 'badge status-confirmed',
   completed: 'badge status-completed',
   cancelled: 'badge status-cancelled',
@@ -19,7 +20,7 @@ export default function MySessionsPanel() {
   const sessions = data?.data ?? []
 
   // True when at least one confirmed session has no room yet
-  const hasPendingRoom = sessions.some((s) => s.status === 'confirmed' && !s.meetingUrl)
+  const hasPendingRoom = sessions.some((s) => (s.status === 'pending_confirmation' || s.status === 'confirmed') && !s.meetingUrl)
 
   return (
     <div className="card">
@@ -64,7 +65,7 @@ export default function MySessionsPanel() {
                     >
                       See Details
                     </button>
-                    {s.status === 'confirmed' && !s.meetingUrl && (
+                    {(s.status === 'pending_confirmation' || s.status === 'confirmed') && !s.meetingUrl && (
                       <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
                         Setting up room…
                       </span>
@@ -77,7 +78,7 @@ export default function MySessionsPanel() {
                         Join
                       </button>
                     )}
-                    {(s.status === 'pending' || s.status === 'confirmed') && (
+                    {(s.status === 'pending' || s.status === 'pending_confirmation') && (
                       <button
                         className="btn btn-danger btn-sm"
                         disabled={cancelling}

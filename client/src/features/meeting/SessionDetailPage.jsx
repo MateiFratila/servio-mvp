@@ -21,17 +21,19 @@ function fmtSize(bytes) {
 }
 
 const STATUS_LABEL = {
-  pending:    { label: 'Pending confirmation', cls: 'badge status-pending' },
-  confirmed:  { label: 'Confirmed',            cls: 'badge status-confirmed' },
-  completed:  { label: 'Completed',            cls: 'badge status-completed' },
-  cancelled:  { label: 'Cancelled',            cls: 'badge status-cancelled' },
+  pending:              { label: 'Awaiting payment',        cls: 'badge status-pending' },
+  pending_confirmation: { label: 'Pending confirmation',    cls: 'badge status-pending' },
+  confirmed:            { label: 'Confirmed',               cls: 'badge status-confirmed' },
+  completed:            { label: 'Completed',               cls: 'badge status-completed' },
+  cancelled:            { label: 'Cancelled',               cls: 'badge status-cancelled' },
 }
 
 const STATUS_TOOLTIP = {
-  pending:   'Payment received. Waiting for the consultant to confirm the session.',
-  confirmed: 'The consultant has confirmed. Your session is locked in.',
-  completed: 'The session has ended successfully.',
-  cancelled: 'This session was cancelled.',
+  pending:              'Payment in progress.',
+  pending_confirmation: 'Payment received. Waiting for the consultant to confirm the session.',
+  confirmed:            'The consultant has confirmed. Your session is locked in.',
+  completed:            'The session has ended successfully.',
+  cancelled:            'This session was cancelled.',
 }
 
 function StatusBadge({ status }) {
@@ -116,7 +118,7 @@ export default function SessionDetailPage() {
     )
   }
 
-  const canCancel = session.status === 'pending' || session.status === 'confirmed'
+  const canCancel = session.status === 'pending' || session.status === 'pending_confirmation'
   const canJoin = session.status === 'confirmed' && session.meetingUrl
 
   return (

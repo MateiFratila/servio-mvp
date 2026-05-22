@@ -1,7 +1,7 @@
 const { Router } = require('express')
 const prisma = require('../db')
 const { authenticate, authorize } = require('../middleware/authenticate')
-const { createMeetingToken } = require('../lib/daily')
+const { createMeetingToken, createRoom } = require('../lib/daily')
 
 const router = Router()
 
@@ -140,7 +140,7 @@ router.patch('/:id', authorize('consultant', 'admin'), async (req, res, next) =>
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
     const { status } = req.body
-    const ALLOWED_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled']
+    const ALLOWED_STATUSES = ['pending', 'pending_confirmation', 'confirmed', 'completed', 'cancelled']
     if (!status || !ALLOWED_STATUSES.includes(status)) {
       return res.status(400).json({ error: `status must be one of: ${ALLOWED_STATUSES.join(', ')}` })
     }
@@ -158,9 +158,30 @@ router.patch('/:id', authorize('consultant', 'admin'), async (req, res, next) =>
       }
     }
 
+    let updateData = { status }
+
+    // If the consultant is confirming and the room was never created (e.g. Daily failed during payment webhook), create it now
+    if (status === 'confirmed' && !existing.meetingUrl) {
+      const sessionWithSlot = await prisma.session.findUnique({
+        where: { id },
+        include: { slot: true },
+      })
+      try {
+        const expMs = new Date(sessionWithSlot.slot.startTime).getTime() + (sessionWithSlot.durationMinutes ?? 60) * 60 * 1000 + 30 * 60 * 1000
+        const room = await createRoom({
+          name: `servio-session-${id}`,
+          exp: expMs,
+        })
+        updateData.meetingUrl = room.url
+        updateData.dailyRoomName = room.name
+      } catch (err) {
+        console.error('[daily] room creation failed on confirm for session', id, err.message)
+      }
+    }
+
     const updated = await prisma.session.update({
       where: { id },
-      data: { status },
+      data: updateData,
       include: SESSION_INCLUDE,
     })
     res.json(updated)

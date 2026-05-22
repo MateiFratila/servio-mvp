@@ -3,4 +3,5 @@
 -- Booked slots are intentionally left untouched.
 DELETE FROM availability_slots
 WHERE is_booked = 0
-  AND MINUTE(start_time) != 0;
+  AND MINUTE(start_time) != 0
+  AND id NOT IN (SELECT slot_id FROM sessions WHERE slot_id IS NOT NULL);

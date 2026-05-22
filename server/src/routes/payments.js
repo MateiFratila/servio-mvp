@@ -122,10 +122,10 @@ router.post('/webhook', async (req, res) => {
   if (event.type === 'payment_intent.succeeded') {
     const intent = event.data.object
 
-    // Mark session as confirmed + paid
+    // Mark session as paid + pending consultant confirmation
     await prisma.session.updateMany({
       where: { stripePaymentIntentId: intent.id },
-      data: { paymentStatus: 'paid', status: 'confirmed' },
+      data: { paymentStatus: 'paid', status: 'pending_confirmation' },
     })
 
     // Fetch session with slot, client and consultant so we can create the room and send notifications

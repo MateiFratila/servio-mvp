@@ -6,10 +6,11 @@ function fmtDateTime(iso) {
   return new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const STATUSES = ['All', 'pending', 'confirmed', 'completed', 'cancelled']
+const STATUSES = ['All', 'pending', 'pending_confirmation', 'confirmed', 'completed', 'cancelled']
 
 const STATUS_BADGE = {
   pending: 'badge status-pending',
+  pending_confirmation: 'badge status-pending',
   confirmed: 'badge status-confirmed',
   completed: 'badge status-completed',
   cancelled: 'badge status-cancelled',
@@ -23,7 +24,7 @@ export default function SessionsTab() {
 
   const allSessions = data?.data ?? []
   const sessions = statusFilter === 'All' ? allSessions : allSessions.filter((s) => s.status === statusFilter)
-  const hasPendingRoom = allSessions.some((s) => s.status === 'confirmed' && !s.meetingUrl)
+  const hasPendingRoom = allSessions.some((s) => (s.status === 'pending_confirmation' || s.status === 'confirmed') && !s.meetingUrl)
 
   return (
     <div className="card">
@@ -81,7 +82,7 @@ export default function SessionsTab() {
                     </span>
                   </td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {s.status === 'pending' && (
+                    {s.status === 'pending_confirmation' && (
                       <button className="btn btn-primary btn-sm" onClick={() => updateStatus({ id: s.id, status: 'confirmed' })}>
                         Confirm
                       </button>

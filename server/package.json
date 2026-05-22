@@ -10,7 +10,8 @@
     "db:generate": "prisma generate --schema=prisma/schema.prisma",
     "db:studio": "dotenv -e ../.env -- prisma studio --schema=prisma/schema.prisma",
     "db:seed": "dotenv -e ../.env -- prisma db seed --schema=prisma/schema.prisma",
-    "db:clear": "dotenv -e ../.env -- node prisma/clear.js"
+    "db:clear": "dotenv -e ../.env -- node prisma/clear.js",
+    "db:clear:prod": "dotenv -e ../.env.prod -- node prisma/clear.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

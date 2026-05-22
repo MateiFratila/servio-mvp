@@ -22,6 +22,7 @@ enum Role {
 
 enum SessionStatus {
   pending
+  pending_confirmation
   confirmed
   completed
   cancelled
