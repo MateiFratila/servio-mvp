@@ -321,7 +321,31 @@ Full user list with role management.
 
 ---
 
-## Backend (Express / Node.js REST API)
+## UI Component Conventions
+
+### Session List Parity Rule
+
+Every component that renders a list (or mini-list) of sessions **must expose the same set of actions** regardless of the viewer's role. The three session-list surfaces are:
+
+| Component | Location | Viewer role |
+|---|---|---|
+| `MySessionsPanel` | `client/src/features/catalogue/MySessionsPanel.jsx` | `client` (and admin acting as client) |
+| `SessionsTab` | `client/src/features/dashboard/SessionsTab.jsx` | `consultant` |
+| `OverviewTab` (upcoming mini-list) | `client/src/features/dashboard/OverviewTab.jsx` | `consultant` |
+| `AllSessionsTab` | `client/src/features/tools/AllSessionsTab.jsx` | `admin` |
+
+**Required actions on every row (regardless of role):**
+- **See Details** — navigates to `/sessions/:id` (the unified `SessionDetailPage`)
+- **Status badge** — human-readable label (never raw enum) + hover tooltip describing the state
+- Role-appropriate action buttons (Confirm, Cancel, Join, etc.) scoped by `status`
+
+**`SessionDetailPage` is the single source of truth for session actions.** Role-sensitive actions (Confirm, Cancel) live there. List components show "See Details" and surface the most time-critical shortcut (e.g. Join for `confirmed`) to avoid unnecessary navigation, but they must never diverge from what `SessionDetailPage` supports.
+
+When adding a new action or status to session flow, update **all four list components and `SessionDetailPage`** in the same change.
+
+---
+
+
 
 ### API Structure
 

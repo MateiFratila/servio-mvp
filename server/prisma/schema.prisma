@@ -23,6 +23,7 @@ enum Role {
 enum SessionStatus {
   pending
   pending_confirmation
+  ping_pong
   confirmed
   completed
   cancelled
@@ -43,6 +44,7 @@ model User {
   profile            ConsultantProfile?
   sessions           Session[]          @relation("ClientSessions")
   uploadedDocuments  SessionDocument[]  @relation("DocumentUploader")
+  sentMessages       SessionMessage[]   @relation("MessageAuthor")
 
   @@map("users")
 }
@@ -99,6 +101,7 @@ model Session {
   consultant ConsultantProfile @relation("ConsultantSessions", fields: [consultantId], references: [id])
   slot       AvailabilitySlot  @relation(fields: [slotId], references: [id])
   documents  SessionDocument[]
+  messages   SessionMessage[]
 
   @@index([clientId])
   @@index([consultantId, status])
@@ -111,6 +114,23 @@ model SystemSetting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
+}
+
+model SessionMessage {
+  id                  Int      @id @default(autoincrement())
+  sessionId           Int      @map("session_id")
+  authorId            Int      @map("author_id")
+  content             String?  @db.Text
+  attachmentFilename  String?  @map("attachment_filename")
+  attachmentBlobName  String?  @map("attachment_blob_name") @db.Text
+  attachmentSizeBytes Int?     @map("attachment_size_bytes")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  author  User    @relation("MessageAuthor", fields: [authorId], references: [id])
+
+  @@index([sessionId])
+  @@map("session_messages")
 }
 
 model SessionDocument {

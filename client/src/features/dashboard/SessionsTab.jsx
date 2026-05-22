@@ -16,6 +16,14 @@ const STATUS_BADGE = {
   cancelled: 'badge status-cancelled',
 }
 
+const STATUS_LABEL = {
+  pending: 'Awaiting payment',
+  pending_confirmation: 'Pending confirmation',
+  confirmed: 'Confirmed',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}
+
 export default function SessionsTab() {
   const [statusFilter, setStatusFilter] = useState('All')
   const { data, isLoading, refetch, isFetching } = useGetMySessionsAsConsultantQuery()
@@ -75,13 +83,14 @@ export default function SessionsTab() {
                 <tr key={s.id}>
                   <td style={{ fontWeight: 500 }}>{s.client?.email ?? '—'}</td>
                   <td style={{ color: 'var(--text-muted)' }}>{fmtDateTime(s.slot?.startTime)}</td>
-                  <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
+                  <td><span className={STATUS_BADGE[s.status]}>{STATUS_LABEL[s.status] ?? s.status}</span></td>
                   <td style={{ color: 'var(--text-muted)', maxWidth: 240 }}>
                     <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {s.notes || '—'}
                     </span>
                   </td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/sessions/${s.id}`)}>See Details</button>
                     {s.status === 'pending_confirmation' && (
                       <button className="btn btn-primary btn-sm" onClick={() => updateStatus({ id: s.id, status: 'confirmed' })}>
                         Confirm

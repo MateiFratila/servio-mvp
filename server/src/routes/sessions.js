@@ -140,7 +140,7 @@ router.patch('/:id', authorize('consultant', 'admin'), async (req, res, next) =>
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
     const { status } = req.body
-    const ALLOWED_STATUSES = ['pending', 'pending_confirmation', 'confirmed', 'completed', 'cancelled']
+    const ALLOWED_STATUSES = ['pending', 'pending_confirmation', 'ping_pong', 'confirmed', 'completed', 'cancelled']
     if (!status || !ALLOWED_STATUSES.includes(status)) {
       return res.status(400).json({ error: `status must be one of: ${ALLOWED_STATUSES.join(', ')}` })
     }

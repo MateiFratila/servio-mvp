@@ -59,6 +59,22 @@ export const catalogueApi = api.injectEndpoints({
       }),
       invalidatesTags: (_res, _err, { sessionId }) => [{ type: 'SessionDocument', id: sessionId }],
     }),
+    getSessionMessages: build.query({
+      query: (sessionId) => `/sessions/${sessionId}/messages`,
+      providesTags: (_res, _err, sessionId) => [{ type: 'SessionMessage', id: sessionId }],
+    }),
+    contactClient: build.mutation({
+      query: ({ sessionId, content, file }) => {
+        const body = new FormData()
+        body.append('content', content)
+        if (file) body.append('file', file)
+        return { url: `/sessions/${sessionId}/messages`, method: 'POST', body }
+      },
+      invalidatesTags: (_res, _err, { sessionId }) => [
+        { type: 'Session', id: sessionId },
+        { type: 'SessionMessage', id: sessionId },
+      ],
+    }),
   }),
 })
 
@@ -75,4 +91,6 @@ export const {
   useGetSessionDocumentsQuery,
   useUploadDocumentMutation,
   useDeleteDocumentMutation,
+  useGetSessionMessagesQuery,
+  useContactClientMutation,
 } = catalogueApi
