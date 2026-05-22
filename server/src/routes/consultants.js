@@ -175,16 +175,20 @@ router.put('/me/slots', authenticate, authorize('consultant', 'admin'), async (r
   }
 })
 
-// GET /api/consultants/:id/slots?date=YYYY-MM-DD — available slots for a specific date
+// GET /api/consultants/:id/slots?date=YYYY-MM-DD[&duration=1|2]
+// Returns available start slots for the given duration:
+//   duration=1 (default) — any available 1h slot
+//   duration=2 — only slots where the immediately consecutive 1h slot is also available
 router.get('/:id/slots', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const { date } = req.query
+    const { date, duration = '1' } = req.query
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'date query param required (YYYY-MM-DD)' })
     }
+    const durationHours = parseInt(duration) === 2 ? 2 : 1
 
     const dayStart = new Date(`${date}T00:00:00.000Z`)
     const dayEnd = new Date(`${date}T23:59:59.999Z`)
@@ -197,6 +201,13 @@ router.get('/:id/slots', authenticate, async (req, res, next) => {
       },
       orderBy: { startTime: 'asc' },
     })
+
+    if (durationHours === 2) {
+      // Only return start slots where the consecutive next 1h slot is also available
+      const availableStartMs = new Set(slots.map((s) => s.startTime.getTime()))
+      return res.json(slots.filter((slot) => availableStartMs.has(slot.endTime.getTime())))
+    }
+
     res.json(slots)
   } catch (err) {
     next(err)

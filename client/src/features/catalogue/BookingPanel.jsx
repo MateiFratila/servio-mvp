@@ -9,6 +9,12 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+function fmtSlotLabel(slot, durationH) {
+  const start = new Date(slot.startTime)
+  const end = new Date(start.getTime() + durationH * 60 * 60 * 1000)
+  return `${fmtTime(start.toISOString())} – ${fmtTime(end.toISOString())}`
+}
+
 // Inner form rendered inside <Elements> once we have a clientSecret
 function PaymentForm({ clientSecret, onSuccess, onCancel }) {
   const stripe = useStripe()
@@ -54,6 +60,7 @@ export default function BookingPanel({ consultantId, consultantName }) {
   const dispatch = useDispatch()
   const fileInputRef = useRef(null)
   const [selectedDate, setSelectedDate] = useState('')
+  const [selectedDuration, setSelectedDuration] = useState(null) // '1' | '2'
   const [selectedSlotId, setSelectedSlotId] = useState(null)
   const [notes, setNotes] = useState('')
   const [files, setFiles] = useState([])
@@ -63,8 +70,8 @@ export default function BookingPanel({ consultantId, consultantName }) {
   const [uploadError, setUploadError] = useState('')
 
   const { data: slots = [], isFetching: slotsLoading } = useGetConsultantSlotsQuery(
-    { consultantId, date: selectedDate },
-    { skip: !selectedDate }
+    { consultantId, date: selectedDate, duration: selectedDuration },
+    { skip: !selectedDate || !selectedDuration }
   )
 
   const [createPaymentIntent, { isLoading: creatingIntent }] = useCreatePaymentIntentMutation()
@@ -79,6 +86,7 @@ export default function BookingPanel({ consultantId, consultantName }) {
         consultantId,
         slotId: selectedSlotId,
         notes,
+        duration: selectedDuration,
       }).unwrap()
 
       if (files.length > 0) {
@@ -119,6 +127,12 @@ export default function BookingPanel({ consultantId, consultantName }) {
     setClientSecret(null)
   }
 
+  function handleDurationChange(value) {
+    setSelectedDuration(value)
+    setSelectedSlotId(null)
+    setIntentError('')
+  }
+
   function handleBack() {
     setClientSecret(null)
     setIntentError('')
@@ -140,6 +154,7 @@ export default function BookingPanel({ consultantId, consultantName }) {
             onClick={() => {
               setConfirmed(false)
               setSelectedDate('')
+              setSelectedDuration(null)
               setSelectedSlotId(null)
               setNotes('')
               setFiles([])
@@ -191,28 +206,42 @@ export default function BookingPanel({ consultantId, consultantName }) {
         />
       </div>
 
+      {/* Duration selector */}
+      <div className="form-group">
+        <label>Session duration</label>
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          {[['1', '1 hour'], ['2', '2 hours']].map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              className={`slot-pill${selectedDuration === val ? ' selected' : ''}`}
+              onClick={() => handleDurationChange(val)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Available slots */}
-      {selectedDate && (
+      {selectedDate && selectedDuration && (
         <div>
           <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>Available times</div>
           {slotsLoading ? (
             <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading slots…</p>
           ) : slots.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No available slots on this date.</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No available slots for this date and duration.</p>
           ) : (
             <div className="slot-grid">
-              {slots.map((slot) => {
-                const label = `${fmtTime(slot.startTime)} – ${fmtTime(slot.endTime)}`
-                return (
-                  <button
-                    key={slot.id}
-                    className={`slot-pill${selectedSlotId === slot.id ? ' selected' : ''}`}
-                    onClick={() => setSelectedSlotId(slot.id)}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
+              {slots.map((slot) => (
+                <button
+                  key={slot.id}
+                  className={`slot-pill${selectedSlotId === slot.id ? ' selected' : ''}`}
+                  onClick={() => setSelectedSlotId(slot.id)}
+                >
+                  {fmtSlotLabel(slot, parseInt(selectedDuration))}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -297,7 +326,7 @@ export default function BookingPanel({ consultantId, consultantName }) {
 
       <button
         className="btn btn-primary"
-        disabled={!selectedDate || !selectedSlotId || creatingIntent}
+        disabled={!selectedDate || !selectedDuration || !selectedSlotId || creatingIntent}
         onClick={handleProceedToPayment}
       >
         {creatingIntent

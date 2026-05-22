@@ -9,10 +9,11 @@ const router = Router()
 
 // POST /api/payments/create-intent
 // Creates a PaymentIntent and a pending session row.
-// Body: { consultantId, slotId, notes? }
+// Body: { consultantId, slotId, notes?, duration? }  duration: 1 (default) | 2 (hours)
 router.post('/create-intent', authenticate, async (req, res, next) => {
   try {
-    const { consultantId, slotId, notes } = req.body
+    const { consultantId, slotId, notes, duration = 1 } = req.body
+    const durationMinutes = parseInt(duration) === 2 ? 120 : 60
     if (!consultantId || !slotId) {
       return res.status(400).json({ error: 'consultantId and slotId are required' })
     }
@@ -52,13 +53,20 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
       })
       if (!profile) return { error: 'Consultant not found', status: 404 }
 
-      // Reserve slot
+      // Reserve primary slot
       await tx.availabilitySlot.update({ where: { id: slot.id }, data: { isBooked: true } })
 
+      // For 2h sessions, also find and reserve the immediately consecutive slot
+      if (durationMinutes === 120) {
+        const slot2 = await tx.availabilitySlot.findFirst({
+          where: { consultantId: slot.consultantId, isBooked: false, startTime: slot.endTime },
+        })
+        if (!slot2) return { error: 'No consecutive slot available for a 2-hour session', status: 409 }
+        await tx.availabilitySlot.update({ where: { id: slot2.id }, data: { isBooked: true } })
+      }
+
       // Calculate amount in smallest unit (bani: 1 RON = 100 bani)
-      const slotDurationMs = new Date(slot.endTime) - new Date(slot.startTime)
-      const slotDurationHours = slotDurationMs / (1000 * 60 * 60)
-      const amountInBani = Math.round(Number(profile.hourlyRate) * slotDurationHours * 100)
+      const amountInBani = Math.round(Number(profile.hourlyRate) * (durationMinutes / 60) * 100)
 
       // Create Stripe PaymentIntent
       const paymentIntent = await stripe.paymentIntents.create({
@@ -77,6 +85,7 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
           clientId: req.user.id,
           consultantId: profile.id,
           slotId: slot.id,
+          durationMinutes,
           notes: notes ?? null,
           status: 'pending',
           paymentStatus: 'unpaid',
@@ -131,7 +140,7 @@ router.post('/webhook', async (req, res) => {
 
     if (session) {
       try {
-        const expMs = new Date(session.slot.endTime).getTime() + 30 * 60 * 1000
+        const expMs = new Date(session.slot.startTime).getTime() + session.durationMinutes * 60 * 1000 + 30 * 60 * 1000
         const room = await createRoom({
           name: `servio-session-${session.id}`,
           exp: expMs,
@@ -172,10 +181,10 @@ router.post('/webhook', async (req, res) => {
     // Release the slot and mark session cancelled
     const session = await prisma.session.findFirst({
       where: { stripePaymentIntentId: intent.id },
-      select: { id: true, slotId: true },
+      select: { id: true, slotId: true, durationMinutes: true },
     })
     if (session) {
-      await prisma.$transaction([
+      const releaseOps = [
         prisma.session.update({
           where: { id: session.id },
           data: { paymentStatus: 'failed', status: 'cancelled' },
@@ -184,7 +193,19 @@ router.post('/webhook', async (req, res) => {
           where: { id: session.slotId },
           data: { isBooked: false },
         }),
-      ])
+      ]
+      if (session.durationMinutes === 120) {
+        const primarySlot = await prisma.availabilitySlot.findUnique({ where: { id: session.slotId } })
+        if (primarySlot) {
+          const nextSlot = await prisma.availabilitySlot.findFirst({
+            where: { consultantId: primarySlot.consultantId, startTime: primarySlot.endTime },
+          })
+          if (nextSlot) {
+            releaseOps.push(prisma.availabilitySlot.update({ where: { id: nextSlot.id }, data: { isBooked: false } }))
+          }
+        }
+      }
+      await prisma.$transaction(releaseOps)
     }
   }
 

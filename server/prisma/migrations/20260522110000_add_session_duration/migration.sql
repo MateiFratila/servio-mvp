@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` ADD COLUMN `duration_minutes` INT NOT NULL DEFAULT 60;

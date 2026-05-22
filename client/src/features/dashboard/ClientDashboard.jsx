@@ -1,20 +1,7 @@
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
 import { selectCurrentUser } from '../auth/authSlice'
-
-// TODO: replace with useGetMySessionsAsClientQuery()
-const PLACEHOLDER_SESSIONS = [
-  { id: 4821, consultant: 'Lorem Ipsum', dateTime: '20 May 2026, 10:30', status: 'pending' },
-  { id: 4820, consultant: 'Dolor Sit', dateTime: '25 May 2026, 14:00', status: 'confirmed' },
-  { id: 4819, consultant: 'Amet Consult', dateTime: '02 Jun 2026, 09:00', status: 'completed' },
-]
-
-const STATUS_BADGE = {
-  pending: 'badge status-pending',
-  confirmed: 'badge status-confirmed',
-  completed: 'badge status-completed',
-  cancelled: 'badge status-cancelled',
-}
+import MySessionsPanel from '../catalogue/MySessionsPanel'
 
 const TABS = [
   { id: 'sessions', label: 'Sesiunile mele' },
@@ -47,51 +34,9 @@ export default function ClientDashboard() {
 }
 
 function ClientSessionsTab() {
-  const [sessions, setSessions] = useState(PLACEHOLDER_SESSIONS)
-
-  function handleCancel(id) {
-    setSessions((prev) => prev.map((s) => s.id === id ? { ...s, status: 'cancelled' } : s))
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="kpi-grid">
-        <KPICard label="Sesiuni programate" value={sessions.filter((s) => s.status === 'confirmed' || s.status === 'pending').length} />
-        <KPICard label="În așteptare" value={sessions.filter((s) => s.status === 'pending').length} accent />
-        <KPICard label="Finalizate" value={sessions.filter((s) => s.status === 'completed').length} />
-      </div>
-
-      <div className="card">
-        <h3 className="section-title">Sesiunile mele</h3>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Consultant</th>
-                <th>Dată &amp; Oră</th>
-                <th>Status</th>
-                <th>Acțiuni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontWeight: 500 }}>{s.consultant}</td>
-                  <td style={{ color: 'var(--text-muted)' }}>{s.dateTime}</td>
-                  <td><span className={STATUS_BADGE[s.status]}>{s.status}</span></td>
-                  <td>
-                    {(s.status === 'pending' || s.status === 'confirmed') && (
-                      <button className="btn btn-danger btn-sm" onClick={() => handleCancel(s.id)}>
-                        Anulează
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <MySessionsPanel />
     </div>
   )
 }
@@ -154,11 +99,3 @@ function ClientProfileTab() {
   )
 }
 
-function KPICard({ label, value, accent }) {
-  return (
-    <div className="card kpi-card">
-      <div className="kpi-value" style={accent ? { color: 'var(--yellow)' } : {}}>{value}</div>
-      <div className="kpi-label">{label}</div>
-    </div>
-  )
-}

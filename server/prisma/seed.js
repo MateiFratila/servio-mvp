@@ -75,7 +75,7 @@ async function main() {
   ])
 
   // ── Availability slots (next 14 days at fixed times) ────────────────────
-  const slotTimes = [9, 10.5, 12, 13.5, 15, 16.5] // hours
+  const slotTimes = [9, 10, 11, 12, 13, 14, 15, 16, 17] // hours (1h slots, back-to-back)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 

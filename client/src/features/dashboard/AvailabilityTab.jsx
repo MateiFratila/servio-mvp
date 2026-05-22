@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useGetMySlotsQuery, useUpdateMySlotsMutation } from './dashboardApi'
 
-const TIME_SLOTS = ['09:00', '10:30', '12:00', '13:30', '15:00', '16:30']
+const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
 const SLOT_DURATION_MIN = 60
 
 // Build the next 7 dates starting tomorrow

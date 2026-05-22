@@ -190,7 +190,7 @@ router.get('/:id/meeting-token', async (req, res, next) => {
     }
 
     const userName = isConsultant ? session.consultant.displayName : session.client.email
-    const expMs = new Date(session.slot.endTime).getTime() + 30 * 60 * 1000
+    const expMs = new Date(session.slot.startTime).getTime() + (session.durationMinutes ?? 60) * 60 * 1000 + 30 * 60 * 1000
 
     const { token } = await createMeetingToken({
       roomName: session.dailyRoomName,
@@ -220,11 +220,26 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
-    // Free the availability slot so it can be rebooked
-    await prisma.$transaction([
+    // Free the availability slot(s) so they can be rebooked
+    const cancelOps = [
       prisma.session.update({ where: { id }, data: { status: 'cancelled' } }),
       prisma.availabilitySlot.update({ where: { id: existing.slotId }, data: { isBooked: false } }),
-    ])
+    ]
+
+    // For 2h sessions, also release the consecutive second slot
+    if (existing.durationMinutes === 120) {
+      const primarySlot = await prisma.availabilitySlot.findUnique({ where: { id: existing.slotId } })
+      if (primarySlot) {
+        const nextSlot = await prisma.availabilitySlot.findFirst({
+          where: { consultantId: primarySlot.consultantId, startTime: primarySlot.endTime, isBooked: true },
+        })
+        if (nextSlot) {
+          cancelOps.push(prisma.availabilitySlot.update({ where: { id: nextSlot.id }, data: { isBooked: false } }))
+        }
+      }
+    }
+
+    await prisma.$transaction(cancelOps)
 
     res.status(204).end()
   } catch (err) {
