@@ -3,7 +3,7 @@ import { api } from '../../services/api'
 export const toolsApi = api.injectEndpoints({
   endpoints: (build) => ({
     getAllConsultants: build.query({
-      query: () => '/consultants',
+      query: () => '/admin/consultants',
       providesTags: ['Consultant'],
     }),
     updateConsultant: build.mutation({

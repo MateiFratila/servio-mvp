@@ -11,6 +11,10 @@ import ConsultantDetail from './features/catalogue/ConsultantDetail'
 import ToolsPage from './features/tools/ToolsPage'
 import MeetingPage from './features/meeting/MeetingPage'
 import SessionDetailPage from './features/meeting/SessionDetailPage'
+import ConsultantLandingPage from './features/consultant/ConsultantLandingPage'
+import ConsultantRegisterPage from './features/consultant/ConsultantRegisterPage'
+import ClientLandingPage from './features/landing/ClientLandingPage'
+import ClientRegisterPage from './features/landing/ClientRegisterPage'
 
 function RootRedirect() {
   const role = useSelector(selectCurrentRole)
@@ -101,6 +105,42 @@ export default function App() {
             <AuthGuard>
               <MeetingPage />
             </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/client"
+          element={
+            <PublicLayout>
+              <ClientLandingPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/client/inregistrare"
+          element={
+            <PublicLayout>
+              <ClientRegisterPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/consultant"
+          element={
+            <PublicLayout>
+              <ConsultantLandingPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/consultant/inregistrare"
+          element={
+            <PublicLayout>
+              <ConsultantRegisterPage />
+            </PublicLayout>
           }
         />
 

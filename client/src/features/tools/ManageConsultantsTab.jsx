@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useGetAllConsultantsQuery, useUpdateConsultantMutation } from './toolsApi'
 
 const SPECIALISATIONS = ['Tax Law', 'VAT Compliance', 'Payroll', 'Audit', 'Corporate Finance', 'Estate Planning']
@@ -55,6 +56,7 @@ export default function ManageConsultantsTab() {
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn btn-secondary btn-sm" onClick={() => setEditTarget({ ...c })}>Edit</button>
+                        <Link to={`/catalog/${c.id}`} className="btn btn-secondary btn-sm" target="_blank" rel="noopener noreferrer">See Profile</Link>
                         <button
                           className={`btn btn-sm ${c.isActive ? 'btn-danger' : 'btn-secondary'}`}
                           onClick={() => updateConsultant({ id: c.id, isActive: !c.isActive })}

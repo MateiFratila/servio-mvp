@@ -62,6 +62,31 @@ router.get('/settings', async (_req, res, next) => {
   }
 })
 
+// GET /api/admin/consultants — all profiles regardless of isActive (admin only)
+router.get('/consultants', async (_req, res, next) => {
+  try {
+    const consultants = await prisma.consultantProfile.findMany({
+      select: {
+        id: true,
+        displayName: true,
+        specialisation: true,
+        hourlyRate: true,
+        avatarUrl: true,
+        isActive: true,
+        userId: true,
+        platformFeePct: true,
+        stripeAccountId: true,
+        stripeOnboardingComplete: true,
+        user: { select: { email: true, phone: true } },
+      },
+      orderBy: { displayName: 'asc' },
+    })
+    res.json({ data: consultants, total: consultants.length })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // PATCH /api/admin/settings/:key — update an editable setting
 // Only whitelisted keys can be updated from the UI
 const EDITABLE_KEYS = new Set(['stripe_publishable_key'])
