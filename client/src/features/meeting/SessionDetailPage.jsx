@@ -42,6 +42,43 @@ function fmtSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function buildGoogleCalendarUrl(session) {
+  const fmt = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `Session with ${session.consultant?.displayName ?? 'Consultant'}`,
+    dates: `${fmt(new Date(session.slot.startTime))}/${fmt(new Date(session.slot.endTime))}`,
+    details: session.notes ?? '',
+  })
+  return `https://calendar.google.com/calendar/render?${params}`
+}
+
+function downloadIcs(session) {
+  const fmt = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  const summary = `Session with ${session.consultant?.displayName ?? 'Consultant'}`
+  const description = (session.notes ?? '').replace(/\n/g, '\\n')
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Servio//Session//EN',
+    'BEGIN:VEVENT',
+    `UID:session-${session.id}@servio`,
+    `DTSTAMP:${fmt(new Date())}`,
+    `DTSTART:${fmt(new Date(session.slot.startTime))}`,
+    `DTEND:${fmt(new Date(session.slot.endTime))}`,
+    `SUMMARY:${summary}`,
+  ]
+  if (description) lines.push(`DESCRIPTION:${description}`)
+  lines.push('END:VEVENT', 'END:VCALENDAR')
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `session-${session.id}.ics`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 const STATUS_LABEL = {
   pending:              { label: 'Awaiting payment',        cls: 'badge status-pending' },
   pending_confirmation: { label: 'Pending confirmation',    cls: 'badge status-pending' },
@@ -316,6 +353,36 @@ export default function SessionDetailPage() {
             )}
           </dd>
         </dl>
+
+        {session.slot?.startTime && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <a
+              href={buildGoogleCalendarUrl(session)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="15" height="15" style={{ flexShrink: 0 }}>
+                <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/>
+                <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/>
+                <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"/>
+                <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/>
+              </svg>
+              Google Calendar
+            </a>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              onClick={() => downloadIcs(session)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style={{ flexShrink: 0 }}>
+                <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
+              </svg>
+              Apple Calendar
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>

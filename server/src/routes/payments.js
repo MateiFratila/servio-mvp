@@ -46,10 +46,10 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
       // Slot must be free at this point — also double-check isBooked for concurrent requests
       if (slot.isBooked) return { error: 'Slot is no longer available', status: 409 }
 
-      // Get hourly rate from consultant profile
+      // Get hourly rate and Stripe Connect info from consultant profile
       const profile = await tx.consultantProfile.findUnique({
         where: { id: parseInt(consultantId) },
-        select: { id: true, displayName: true, hourlyRate: true },
+        select: { id: true, displayName: true, hourlyRate: true, stripeAccountId: true, stripeOnboardingComplete: true, platformFeePct: true },
       })
       if (!profile) return { error: 'Consultant not found', status: 404 }
 
@@ -69,7 +69,11 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
       const amountInBani = Math.round(Number(profile.hourlyRate) * (durationMinutes / 60) * 100)
 
       // Create Stripe PaymentIntent
-      const paymentIntent = await stripe.paymentIntents.create({
+      // If the consultant has completed Connect onboarding, split automatically using
+      // the consultant's individual platform fee rate:
+      //   (100 - platformFeePct)% → consultant's connected account (via transfer_data)
+      //   platformFeePct%         → platform (application_fee_amount)
+      const intentParams = {
         amount: amountInBani,
         currency: 'ron',
         metadata: {
@@ -77,7 +81,13 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
           slotId: String(slot.id),
           clientId: String(req.user.id),
         },
-      })
+      }
+      if (profile.stripeAccountId && profile.stripeOnboardingComplete) {
+        const feePct = Number(profile.platformFeePct)
+        intentParams.transfer_data = { destination: profile.stripeAccountId }
+        intentParams.application_fee_amount = Math.round(amountInBani * feePct / 100)
+      }
+      const paymentIntent = await stripe.paymentIntents.create(intentParams)
 
       // Create session row with unpaid status
       const session = await tx.session.create({
@@ -206,6 +216,17 @@ router.post('/webhook', async (req, res) => {
         }
       }
       await prisma.$transaction(releaseOps)
+    }
+  }
+
+  if (event.type === 'account.updated') {
+    const account = event.data.object
+    // Mark onboarding complete once the consultant has submitted all required details
+    if (account.details_submitted) {
+      await prisma.consultantProfile.updateMany({
+        where: { stripeAccountId: account.id },
+        data: { stripeOnboardingComplete: true },
+      })
     }
   }
 

@@ -1,6 +1,7 @@
 const { Router } = require('express')
 const prisma = require('../db')
-const { authenticate, authorize } = require('../middleware/authenticate')
+const stripe = require('../lib/stripe')
+const { authenticate, authorize, optionalAuthenticate } = require('../middleware/authenticate')
 
 const router = Router()
 
@@ -13,10 +14,13 @@ const CONSULTANT_SELECT = {
   avatarUrl: true,
   isActive: true,
   userId: true,
+  platformFeePct: true,
+  stripeAccountId: true,
+  stripeOnboardingComplete: true,
 }
 
 // GET /api/consultants — paginated + filtered list (public catalogue)
-router.get('/', authenticate, async (req, res, next) => {
+router.get('/', optionalAuthenticate, async (req, res, next) => {
   try {
     const {
       specialisation,
@@ -215,7 +219,7 @@ router.get('/:id/slots', authenticate, async (req, res, next) => {
 })
 
 // GET /api/consultants/:id — single consultant profile
-router.get('/:id', authenticate, async (req, res, next) => {
+router.get('/:id', optionalAuthenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
@@ -238,7 +242,7 @@ router.patch('/:id', authenticate, authorize('admin'), async (req, res, next) =>
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const { displayName, description, specialisation, hourlyRate, isActive } = req.body
+    const { displayName, description, specialisation, hourlyRate, isActive, platformFeePct } = req.body
     const data = {}
 
     if (displayName !== undefined) data.displayName = displayName
@@ -246,6 +250,13 @@ router.patch('/:id', authenticate, authorize('admin'), async (req, res, next) =>
     if (specialisation !== undefined) data.specialisation = specialisation
     if (hourlyRate !== undefined) data.hourlyRate = parseFloat(hourlyRate)
     if (isActive !== undefined) data.isActive = Boolean(isActive)
+    if (platformFeePct !== undefined) {
+      const pct = parseFloat(platformFeePct)
+      if (isNaN(pct) || pct < 0 || pct > 100) {
+        return res.status(400).json({ error: 'platformFeePct must be a number between 0 and 100' })
+      }
+      data.platformFeePct = pct
+    }
 
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ error: 'Nothing to update' })
@@ -257,6 +268,70 @@ router.patch('/:id', authenticate, authorize('admin'), async (req, res, next) =>
       select: CONSULTANT_SELECT,
     })
     res.json(updated)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/consultants/me/connect/onboard
+// Creates a Stripe Express account (if needed) and returns a hosted onboarding URL.
+// The consultant visits the URL to enter their bank details; Stripe handles KYC.
+// On return, Stripe sends an `account.updated` webhook to complete the flow.
+router.post('/me/connect/onboard', authenticate, authorize('consultant'), async (req, res, next) => {
+  try {
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { userId: req.user.id },
+      select: { id: true, stripeAccountId: true, stripeOnboardingComplete: true },
+    })
+    if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
+
+    if (profile.stripeOnboardingComplete) {
+      return res.status(400).json({ error: 'Stripe Connect onboarding already complete' })
+    }
+
+    let accountId = profile.stripeAccountId
+    if (!accountId) {
+      const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } })
+      const account = await stripe.accounts.create({
+        type: 'express',
+        email: user.email,
+        capabilities: { transfers: { requested: true } },
+        business_type: 'individual',
+      })
+      accountId = account.id
+      await prisma.consultantProfile.update({
+        where: { id: profile.id },
+        data: { stripeAccountId: accountId },
+      })
+    }
+
+    const appUrl = process.env.APP_URL || 'http://localhost:5173'
+    const accountLink = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${appUrl}/acasa?tab=contul-meu&connect=refresh`,
+      return_url: `${appUrl}/acasa?tab=contul-meu&connect=success`,
+      type: 'account_onboarding',
+    })
+
+    res.json({ url: accountLink.url })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/consultants/me/connect/status
+// Returns whether the consultant has completed Stripe Connect onboarding.
+router.get('/me/connect/status', authenticate, authorize('consultant'), async (req, res, next) => {
+  try {
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { userId: req.user.id },
+      select: { stripeAccountId: true, stripeOnboardingComplete: true },
+    })
+    if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
+    res.json({
+      stripeAccountId: profile.stripeAccountId,
+      onboardingComplete: profile.stripeOnboardingComplete,
+    })
   } catch (err) {
     next(err)
   }

@@ -6,6 +6,7 @@ import RoleGuard from './components/RoleGuard'
 import Navbar from './components/Navbar'
 import LoginPage from './features/auth/LoginPage'
 import AcasaPage from './features/acasa/AcasaPage'
+import CataloguePage from './features/catalogue/CataloguePage'
 import ConsultantDetail from './features/catalogue/ConsultantDetail'
 import ToolsPage from './features/tools/ToolsPage'
 import MeetingPage from './features/meeting/MeetingPage'
@@ -15,6 +16,15 @@ function RootRedirect() {
   const role = useSelector(selectCurrentRole)
   if (role) return <Navigate to="/acasa" replace />
   return <Navigate to="/login" replace />
+}
+
+function PublicLayout({ children }) {
+  return (
+    <div className="page">
+      <Navbar />
+      {children}
+    </div>
+  )
 }
 
 function ProtectedLayout({ children }) {
@@ -46,13 +56,20 @@ export default function App() {
         />
 
         <Route
+          path="/catalog"
+          element={
+            <PublicLayout>
+              <CataloguePage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
           path="/catalog/:id"
           element={
-            <ProtectedLayout>
-              <RoleGuard allowed={['client', 'consultant', 'admin']}>
-                <ConsultantDetail />
-              </RoleGuard>
-            </ProtectedLayout>
+            <PublicLayout>
+              <ConsultantDetail />
+            </PublicLayout>
           }
         />
 

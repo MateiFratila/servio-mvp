@@ -36,13 +36,21 @@ export default function Navbar() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            {user?.name ?? user?.email}
-            <span className="badge badge-grey" style={{ marginLeft: 8 }}>{role}</span>
-          </span>
-          <button className="btn btn-secondary btn-sm" onClick={handleLogout}>
-            Sign out
-          </button>
+          {user ? (
+            <>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                {user.name ?? user.email}
+                <span className="badge badge-grey" style={{ marginLeft: 8 }}>{role}</span>
+              </span>
+              <button className="btn btn-secondary btn-sm" onClick={handleLogout}>
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('/login')}>
+              Sign in
+            </button>
+          )}
         </div>
       </div>
     </nav>

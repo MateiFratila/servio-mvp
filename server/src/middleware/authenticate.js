@@ -33,4 +33,21 @@ function authorize(...allowedRoles) {
   }
 }
 
-module.exports = { authenticate, authorize }
+/**
+ * Like authenticate but doesn't reject unauthenticated requests — it simply
+ * skips attaching req.user when no valid token is present.
+ */
+function optionalAuthenticate(req, res, next) {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return next()
+  const token = authHeader.slice(7)
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET)
+    req.user = { id: payload.sub, email: payload.email, role: payload.role }
+  } catch {
+    // invalid token — proceed as unauthenticated
+  }
+  next()
+}
+
+module.exports = { authenticate, authorize, optionalAuthenticate }
