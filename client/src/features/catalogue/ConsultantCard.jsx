@@ -9,15 +9,17 @@ const STATUS_BADGE = {
 
 export default function ConsultantCard({ consultant }) {
   const navigate = useNavigate()
-  const { id, displayName, specialisation, bio, hourlyRate, avatarUrl } = consultant
+  const { id, displayName, specialisation, bio, hourlyRate } = consultant
+  const avatarSrc = `/api/consultants/${id}/avatar`
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <img
-          src={avatarUrl ?? `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}`}
+          src={avatarSrc}
           alt={displayName}
           style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', background: 'var(--grey-bg)' }}
+          onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}` }}
         />
         <div>
           <div style={{ fontWeight: 600 }}>{displayName}</div>

@@ -75,7 +75,7 @@ router.post('/', async (req, res, next) => {
 
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
 
-    const blobName = await uploadBlob(sessionId, req.file.buffer, req.file.mimetype)
+    const blobName = await uploadBlob(`sessions/${sessionId}`, req.file.buffer, req.file.mimetype)
 
     const doc = await prisma.sessionDocument.create({
       data: {

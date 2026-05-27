@@ -14,6 +14,18 @@ export const dashboardApi = api.injectEndpoints({
       query: (body) => ({ url: '/consultants/me', method: 'PATCH', body }),
       invalidatesTags: ['User'],
     }),
+    uploadAvatar: build.mutation({
+      query: (formData) => ({ url: '/consultants/me/avatar', method: 'POST', body: formData }),
+      invalidatesTags: ['User'],
+    }),
+    uploadBanner: build.mutation({
+      query: (formData) => ({ url: '/consultants/me/banner', method: 'POST', body: formData }),
+      invalidatesTags: ['User'],
+    }),
+    getExpertiseCategories: build.query({
+      query: () => '/consultants/categories',
+      providesTags: ['Category'],
+    }),
     getMySlots: build.query({
       query: () => '/consultants/me/slots',
       providesTags: ['Slot'],
@@ -26,6 +38,21 @@ export const dashboardApi = api.injectEndpoints({
       query: ({ id, ...body }) => ({ url: `/sessions/${id}`, method: 'PATCH', body }),
       invalidatesTags: ['Session'],
     }),
+    updateAccountSettings: build.mutation({
+      query: (body) => ({ url: '/users/me', method: 'PATCH', body }),
+      invalidatesTags: ['User'],
+    }),
+    deleteMyAccount: build.mutation({
+      query: () => ({ url: '/users/me', method: 'DELETE' }),
+    }),
+    getConnectStatus: build.query({
+      query: () => '/consultants/me/connect/status',
+      providesTags: ['ConnectStatus'],
+    }),
+    startConnectOnboarding: build.mutation({
+      query: () => ({ url: '/consultants/me/connect/onboard', method: 'POST' }),
+      invalidatesTags: ['ConnectStatus'],
+    }),
   }),
 })
 
@@ -33,7 +60,14 @@ export const {
   useGetMySessionsAsConsultantQuery,
   useGetMyProfileQuery,
   useUpdateMyProfileMutation,
+  useUploadAvatarMutation,
+  useUploadBannerMutation,
+  useGetExpertiseCategoriesQuery,
   useGetMySlotsQuery,
   useUpdateMySlotsMutation,
   useUpdateSessionStatusMutation,
+  useUpdateAccountSettingsMutation,
+  useDeleteMyAccountMutation,
+  useGetConnectStatusQuery,
+  useStartConnectOnboardingMutation,
 } = dashboardApi

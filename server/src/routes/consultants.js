@@ -1,10 +1,29 @@
 const { Router } = require('express')
+const multer = require('multer')
 const prisma = require('../db')
 const stripe = require('../lib/stripe')
 const { authenticate, authorize, optionalAuthenticate } = require('../middleware/authenticate')
+const { uploadBlob, streamBlob, deleteBlob } = require('../lib/azureStorage')
 
 const router = Router()
 
+// Multer: memory storage, 5 MB limit, images only
+const IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const uploadImage = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    IMAGE_MIME.has(file.mimetype) ? cb(null, true) : cb(Object.assign(new Error('Only JPEG, PNG and WebP images are allowed'), { status: 415 }))
+  },
+})
+
+function runImageUpload(req, res) {
+  return new Promise((resolve, reject) => {
+    uploadImage.single('file')(req, res, (err) => (err ? reject(err) : resolve()))
+  })
+}
+
+// Fields exposed to any authenticated caller (catalogue, profile cards)
 const CONSULTANT_SELECT = {
   id: true,
   displayName: true,
@@ -12,11 +31,17 @@ const CONSULTANT_SELECT = {
   specialisation: true,
   hourlyRate: true,
   avatarUrl: true,
+  bannerUrl: true,
+  languages: true,
   isActive: true,
   userId: true,
   platformFeePct: true,
   stripeAccountId: true,
   stripeOnboardingComplete: true,
+  expertiseCategories: {
+    select: { category: { select: { id: true, name: true, slug: true } } },
+  },
+  tags: { select: { id: true, tag: true } },
 }
 
 // GET /api/consultants — paginated + filtered list (public catalogue)
@@ -73,6 +98,34 @@ router.get('/', optionalAuthenticate, async (req, res, next) => {
   }
 })
 
+// GET /api/consultants/categories — platform-defined expertise categories (public)
+router.get('/categories', async (_req, res, next) => {
+  try {
+    const categories = await prisma.expertiseCategory.findMany({ orderBy: { name: 'asc' } })
+    res.json(categories)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/consultants/tags/suggestions?q= — hashtag autocomplete for catalogue search
+router.get('/tags/suggestions', async (req, res, next) => {
+  try {
+    const q = (req.query.q || '').trim().toLowerCase()
+    if (!q) return res.json([])
+    const rows = await prisma.consultantTag.findMany({
+      where: { tag: { contains: q } },
+      select: { tag: true },
+      distinct: ['tag'],
+      take: 20,
+      orderBy: { tag: 'asc' },
+    })
+    res.json(rows.map((r) => r.tag))
+  } catch (err) {
+    next(err)
+  }
+})
+
 // GET /api/consultants/me — consultant's own profile
 router.get('/me', authenticate, authorize('consultant', 'admin'), async (req, res, next) => {
   try {
@@ -88,6 +141,8 @@ router.get('/me', authenticate, authorize('consultant', 'admin'), async (req, re
 })
 
 // PATCH /api/consultants/me — consultant updates their own profile
+// Body may include: displayName, description, specialisation, hourlyRate,
+//   languages (string[]), categoryIds (number[]), tags (string[])
 router.patch('/me', authenticate, authorize('consultant', 'admin'), async (req, res, next) => {
   try {
     const profile = await prisma.consultantProfile.findUnique({
@@ -96,23 +151,110 @@ router.patch('/me', authenticate, authorize('consultant', 'admin'), async (req, 
     })
     if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
 
-    const { displayName, description, specialisation, hourlyRate } = req.body
+    const { displayName, description, specialisation, hourlyRate, languages, categoryIds, tags } = req.body
+
     const data = {}
-    if (displayName !== undefined) data.displayName = displayName
+    if (displayName !== undefined) data.displayName = String(displayName).trim()
     if (description !== undefined) data.description = description
     if (specialisation !== undefined) data.specialisation = specialisation
     if (hourlyRate !== undefined) data.hourlyRate = parseFloat(hourlyRate)
-
-    if (Object.keys(data).length === 0) {
-      return res.status(400).json({ error: 'Nothing to update' })
+    if (languages !== undefined) {
+      if (!Array.isArray(languages)) return res.status(400).json({ error: 'languages must be an array' })
+      data.languages = languages
     }
 
-    const updated = await prisma.consultantProfile.update({
+    const ops = []
+
+    if (Object.keys(data).length > 0) {
+      ops.push(prisma.consultantProfile.update({ where: { id: profile.id }, data }))
+    }
+
+    if (categoryIds !== undefined) {
+      if (!Array.isArray(categoryIds)) return res.status(400).json({ error: 'categoryIds must be an array' })
+      ops.push(prisma.consultantProfileCategory.deleteMany({ where: { profileId: profile.id } }))
+      if (categoryIds.length > 0) {
+        ops.push(
+          prisma.consultantProfileCategory.createMany({
+            data: categoryIds.map((cid) => ({ profileId: profile.id, categoryId: Number(cid) })),
+            skipDuplicates: true,
+          }),
+        )
+      }
+    }
+
+    if (tags !== undefined) {
+      if (!Array.isArray(tags)) return res.status(400).json({ error: 'tags must be an array' })
+      const cleaned = [...new Set(tags.map((t) => String(t).toLowerCase().trim()).filter(Boolean))]
+      ops.push(prisma.consultantTag.deleteMany({ where: { consultantId: profile.id } }))
+      if (cleaned.length > 0) {
+        ops.push(
+          prisma.consultantTag.createMany({
+            data: cleaned.map((tag) => ({ consultantId: profile.id, tag })),
+            skipDuplicates: true,
+          }),
+        )
+      }
+    }
+
+    if (ops.length === 0) return res.status(400).json({ error: 'Nothing to update' })
+
+    await prisma.$transaction(ops)
+
+    const updated = await prisma.consultantProfile.findUnique({
       where: { id: profile.id },
-      data,
       select: CONSULTANT_SELECT,
     })
     res.json(updated)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/consultants/me/avatar — upload avatar image
+router.post('/me/avatar', authenticate, authorize('consultant', 'admin'), async (req, res, next) => {
+  try {
+    await runImageUpload(req, res)
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
+
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { userId: req.user.id },
+      select: { id: true, avatarBlobName: true },
+    })
+    if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
+
+    if (profile.avatarBlobName) await deleteBlob(profile.avatarBlobName).catch(() => {})
+
+    const blobName = await uploadBlob(`profiles/${profile.id}/avatar`, req.file.buffer, req.file.mimetype)
+    await prisma.consultantProfile.update({
+      where: { id: profile.id },
+      data: { avatarBlobName: blobName, avatarUrl: null },
+    })
+    res.json({ ok: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/consultants/me/banner — upload banner image
+router.post('/me/banner', authenticate, authorize('consultant', 'admin'), async (req, res, next) => {
+  try {
+    await runImageUpload(req, res)
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
+
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { userId: req.user.id },
+      select: { id: true, bannerBlobName: true },
+    })
+    if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
+
+    if (profile.bannerBlobName) await deleteBlob(profile.bannerBlobName).catch(() => {})
+
+    const blobName = await uploadBlob(`profiles/${profile.id}/banner`, req.file.buffer, req.file.mimetype)
+    await prisma.consultantProfile.update({
+      where: { id: profile.id },
+      data: { bannerBlobName: blobName, bannerUrl: null },
+    })
+    res.json({ ok: true })
   } catch (err) {
     next(err)
   }
@@ -213,6 +355,38 @@ router.get('/:id/slots', authenticate, async (req, res, next) => {
     }
 
     res.json(slots)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/consultants/:id/avatar — proxy-stream the consultant's avatar image
+router.get('/:id/avatar', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { id },
+      select: { avatarBlobName: true },
+    })
+    if (!profile?.avatarBlobName) return res.status(404).end()
+    await streamBlob(profile.avatarBlobName, res)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/consultants/:id/banner — proxy-stream the consultant's banner image
+router.get('/:id/banner', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { id },
+      select: { bannerBlobName: true },
+    })
+    if (!profile?.bannerBlobName) return res.status(404).end()
+    await streamBlob(profile.bannerBlobName, res)
   } catch (err) {
     next(err)
   }
@@ -321,16 +495,40 @@ router.post('/me/connect/onboard', authenticate, authorize('consultant'), async 
 
 // GET /api/consultants/me/connect/status
 // Returns whether the consultant has completed Stripe Connect onboarding.
+// If a stripeAccountId exists but onboardingComplete is still false, we query
+// Stripe directly to check details_submitted and self-heal the DB row.
+// This means the status is always accurate even if the account.updated webhook
+// was missed (e.g. stripe listener not running in dev).
 router.get('/me/connect/status', authenticate, authorize('consultant'), async (req, res, next) => {
   try {
     const profile = await prisma.consultantProfile.findUnique({
       where: { userId: req.user.id },
-      select: { stripeAccountId: true, stripeOnboardingComplete: true },
+      select: { id: true, stripeAccountId: true, stripeOnboardingComplete: true },
     })
     if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
+
+    let onboardingComplete = profile.stripeOnboardingComplete
+
+    // If we have an account but haven't marked it complete yet, check live from Stripe
+    if (profile.stripeAccountId && !onboardingComplete) {
+      try {
+        const account = await stripe.accounts.retrieve(profile.stripeAccountId)
+        if (account.details_submitted) {
+          onboardingComplete = true
+          await prisma.consultantProfile.update({
+            where: { id: profile.id },
+            data: { stripeOnboardingComplete: true },
+          })
+        }
+      } catch (stripeErr) {
+        // Non-fatal: return whatever we have in the DB
+        console.error('[connect] failed to retrieve Stripe account', stripeErr.message)
+      }
+    }
+
     res.json({
       stripeAccountId: profile.stripeAccountId,
-      onboardingComplete: profile.stripeOnboardingComplete,
+      onboardingComplete,
     })
   } catch (err) {
     next(err)

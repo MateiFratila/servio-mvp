@@ -1,11 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
-import { selectCurrentRole } from './features/auth/authSlice'
 import AuthGuard from './components/AuthGuard'
 import RoleGuard from './components/RoleGuard'
 import Navbar from './components/Navbar'
 import LoginPage from './features/auth/LoginPage'
 import AcasaPage from './features/acasa/AcasaPage'
+import ContulMeuPage from './features/contul-meu/ContulMeuPage'
 import CataloguePage from './features/catalogue/CataloguePage'
 import ConsultantDetail from './features/catalogue/ConsultantDetail'
 import ToolsPage from './features/tools/ToolsPage'
@@ -17,9 +16,7 @@ import ClientLandingPage from './features/landing/ClientLandingPage'
 import ClientRegisterPage from './features/landing/ClientRegisterPage'
 
 function RootRedirect() {
-  const role = useSelector(selectCurrentRole)
-  if (role) return <Navigate to="/acasa" replace />
-  return <Navigate to="/login" replace />
+  return <Navigate to="/acasa" replace />
 }
 
 function PublicLayout({ children }) {
@@ -51,9 +48,18 @@ export default function App() {
         <Route
           path="/acasa"
           element={
+            <PublicLayout>
+              <AcasaPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/contul-meu"
+          element={
             <ProtectedLayout>
               <RoleGuard allowed={['client', 'consultant', 'admin']}>
-                <AcasaPage />
+                <ContulMeuPage />
               </RoleGuard>
             </ProtectedLayout>
           }

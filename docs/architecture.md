@@ -39,15 +39,22 @@ servio/
 │       └── features/
 │           ├── auth/
 │           │   └── authSlice.js
-│           ├── catalogue/    # Client Dashboard
-│           │   ├── CataloguePage.jsx      # /catalogue — grid + filters
+│           ├── acasa/        # Home Page
+│           │   ├── AcasaPage.jsx          # /acasa — Hero + Catalog + Footer
+│           │   └── Footer.jsx             # Site-wide footer
+│           ├── catalogue/    # Catalogue
+│           │   ├── CataloguePage.jsx      # Embedded in /acasa & standalone
 │           │   ├── ConsultantCard.jsx     # Individual consultant card
-│           │   ├── ConsultantDetail.jsx   # /catalogue/:id — profile + booking
+│           │   ├── ConsultantDetail.jsx   # /catalog/:id — profile + booking
 │           │   ├── BookingPanel.jsx       # Slot picker + booking form
 │           │   ├── MySessionsPanel.jsx    # Client's booked sessions list
 │           │   └── catalogueApi.js        # RTK Query endpoints
-│           ├── dashboard/    # Consultant Dashboard
-│           │   ├── DashboardPage.jsx      # /dashboard — sidebar layout
+│           ├── contul-meu/   # Contul Meu Page
+│           │   ├── ContulMeuPage.jsx      # /contul-meu — tab layout (role-aware)
+│           │   ├── ClientDashboard.jsx    # client/admin tabs: Sessions | Profile
+│           │   └── dashboardApi.js        # RTK Query endpoints
+│           ├── dashboard/    # Consultant Dashboard (used inside ContulMeuPage)
+│           │   ├── DashboardPage.jsx      # Tab layout for consultant role
 │           │   ├── OverviewTab.jsx        # Summary cards + upcoming sessions
 │           │   ├── SessionsTab.jsx        # Full sessions table
 │           │   ├── AvailabilityTab.jsx    # Weekly availability grid
@@ -95,19 +102,23 @@ Role is stored on the user record and returned as part of the authentication res
 
 ### Views by Role
 
-| Route                   | Visible to            | Purpose                                              |
-|-------------------------|-----------------------|------------------------------------------------------|
-| `/login`                | All (unauthenticated) | Authentication entry point                           |
-| `/catalogue`            | `client`, `admin`     | Browse and filter available fiscal consultants       |
-| `/catalogue/:id`        | `client`, `admin`     | Consultant profile detail + booking flow             |
-| `/dashboard`            | `consultant`, `admin` | Consultant's own sessions, profile, and availability |
-| `/tools`                | `admin`               | Admin-only platform management tools                 |
+| Route              | Visible to                        | Purpose                                                              |
+|--------------------|-----------------------------------|----------------------------------------------------------------------|
+| `/login`           | All (unauthenticated)             | Authentication entry point                                           |
+| `/acasa`           | All (including unauthenticated)   | Home: Hero carousel + Consultant Catalogue + Footer                  |
+| `/catalog/:id`     | All authenticated                 | Consultant profile detail + booking flow                             |
+| `/contul-meu`      | All authenticated                 | Role-aware account page: sessions, profile, availability (tabs)      |
+| `/tools`           | `admin`                           | Admin-only platform management tools                                 |
+| `/consultant`      | All (unauthenticated)             | Consultant landing page + registration entry point                   |
+| `/client`          | All (unauthenticated)             | Client landing page + registration entry point                       |
 
 ### Routing & Auth Guard
 
-- A top-level auth guard reads the role from auth state and redirects unauthenticated users to `/login`.
-- Role-based route guards prevent clients from accessing `/dashboard` and consultants from accessing `/catalogue`, except for admins who can access all routes.
-- `/tools` is exclusively accessible to users with the `admin` role; any other role is redirected to their respective default view.
+- A top-level auth guard reads the role from auth state and redirects unauthenticated users to `/login` for protected routes.
+- `/acasa` is publicly accessible — no authentication required.
+- After login, all roles land on `/acasa`.
+- `/contul-meu` is accessible to all authenticated roles; content is role-differentiated (see below).
+- `/tools` is exclusively accessible to users with the `admin` role; any other role is redirected to `/acasa`.
 
 ### State Management
 
@@ -117,36 +128,25 @@ Role is stored on the user record and returned as part of the authentication res
 
 ---
 
-### Client Dashboard (`/catalogue`)
+### Home Page (`/acasa`)
 
-The Client Dashboard is the primary surface for users with the `client` role. It allows them to discover and book fiscal consultants.
+Publicly accessible — no authentication required. Also the first page reached after login.
 
-#### `/catalogue` — Consultant Catalogue
+**Layout (top to bottom):**
+1. **Hero Unit** — full-width carousel with 2 slides:
+   - Slide 1: image + CTA button → `/consultant` ("Devino consultant")
+   - Slide 2: image + CTA button → `/client` ("Găsește un consultant")
+2. **Consultant Catalogue** — the existing `CataloguePage` component embedded directly (grid + filter sidebar, no separate route needed)
+3. **Footer** — site-wide footer containing:
+   - Social media links
+   - Link to legal T&Cs (`/legal/termeni`)
+   - Link to contact form (`/contact`)
+   - Link to feedback form (`/feedback`)
+   _(T&Cs, contact, and feedback pages do not exist yet — links are placeholders for now)_
 
-**Layout:** Full-width grid of consultant cards with a sticky filter sidebar.
+---
 
-**Stat Bar (top):**
-| Metric | Placeholder value |
-|---|---|
-| Available consultants | 24 |
-| Specialisations | 6 |
-| Avg. hourly rate | €85 |
-
-**Filter Sidebar:**
-- Specialisation (multi-select checkboxes): _Tax Law_, _VAT Compliance_, _Payroll_, _Audit_, _Corporate Finance_, _Estate Planning_
-- Hourly rate range (slider: €0 – €300)
-- Availability (toggle: Show available today only)
-- Sort by: Relevance · Rate (asc/desc) · Name
-
-**Consultant Card:**
-- Avatar (placeholder image)
-- Display name: e.g. _"Lorem Ipsum"_
-- Specialisation badge: e.g. _"Tax Law"_
-- Short bio (2 lines): _"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore."_
-- Hourly rate: e.g. _€90 / hr_
-- CTA button: **View Profile**
-
-#### `/catalogue/:id` — Consultant Profile & Booking
+### `/catalog/:id` — Consultant Profile & Booking
 
 **Layout:** Two-column — profile detail on the left, booking panel on the right.
 
@@ -166,27 +166,33 @@ The Client Dashboard is the primary surface for users with the `client` role. It
 - CTA button: **Confirm Booking**
 - Confirmation inline message on success: _"Your session has been booked. You'll find it under My Sessions."_
 
-**My Sessions Panel (below booking, visible to `client`):**
-- Heading: _"My Sessions"_
-- Table columns: Consultant · Date & Time · Status · Actions
-- Placeholder rows (3):
-  - _Lorem Ipsum_ · 20 May 2026, 10:30 · `pending` · (Cancel)
-  - _Dolor Sit_ · 25 May 2026, 14:00 · `confirmed` · (Cancel)
-  - _Amet Consult_ · 02 Jun 2026, 09:00 · `completed` · —
-
 ---
 
-### Consultant Dashboard (`/dashboard`)
+### Contul Meu (`/contul-meu`)
 
-The Consultant Dashboard is the primary surface for users with the `consultant` role. It allows them to manage their profile, set availability, and handle booked sessions.
+Promoted from a tab inside Acasă to a dedicated page. Accessible to all authenticated roles; content is role-differentiated. The section selector is a **horizontal tab bar** (replaces the former sidebar `aside`).
 
-**Layout:** Sidebar navigation + main content area.
+#### `client` / `admin` view
 
-**Sidebar links:** Overview · My Sessions · Availability · My Profile
+**Tabs:** Sesiunile mele · Profilul meu
 
-#### Overview Tab
+**Sesiunile mele tab:**
+- Full sessions list (`MySessionsPanel`) — Consultant · Date & Time · Status · Actions
 
-**Welcome banner:** _"Welcome back, Lorem Ipsum."_
+**Profilul meu tab:**
+- Inline-editable fields: Name, Email
+- Avatar upload control
+- CTA: **Salvează**
+
+#### `consultant` view
+
+**Tabs:** Overview · Sesiunile mele · Disponibilitate · Profilul meu
+
+**Layout:** Same tab-bar pattern; content areas identical to the former sidebar tabs in `DashboardPage`.
+
+##### Overview Tab
+
+**Welcome banner:** _"Bun venit înapoi, Lorem Ipsum."_
 
 **Summary cards (4-up grid):**
 | Card | Placeholder value |
@@ -201,7 +207,7 @@ The Consultant Dashboard is the primary surface for users with the `consultant` 
 - Client: _"Client B"_ · 22 May 2026, 09:00 · `confirmed`
 - Client: _"Client C"_ · 28 May 2026, 14:00 · `confirmed`
 
-#### My Sessions Tab
+##### Sesiunile mele Tab
 
 Full table of sessions scoped to the logged-in consultant.
 
@@ -209,33 +215,28 @@ Full table of sessions scoped to the logged-in consultant.
 
 **Filters:** Status (All · Pending · Confirmed · Completed · Cancelled) · Date range picker
 
-**Placeholder rows (5):**
-| Client | Date & Time | Status | Notes |
-|---|---|---|---|
-| Lorem Client | 20 May 2026, 10:30 | `pending` | _"Need advice on Q2 VAT filing."_ |
-| Ipsum Corp | 22 May 2026, 09:00 | `confirmed` | _"Annual payroll review."_ |
-| Dolor Ltd | 25 May 2026, 16:00 | `confirmed` | — |
-| Sit Advisory | 10 May 2026, 11:00 | `completed` | _"Estate planning initial consult."_ |
-| Amet Holdings | 05 May 2026, 13:30 | `cancelled` | — |
-
-#### Availability Tab
+##### Disponibilitate Tab
 
 **Weekly availability grid:**
 - Rows: Mon – Sun
 - Columns: 09:00 · 10:30 · 12:00 · 13:30 · 15:00 · 16:30
 - Slots toggle between **Available** (green) and **Blocked** (grey)
 - Booked slots shown in blue (read-only, tooltip showing client name)
-- CTA button: **Save Availability**
+- CTA button: **Salvează disponibilitatea**
 
-#### My Profile Tab
+##### Profilul meu Tab
 
 Inline-editable form fields:
-- Display Name: _"Lorem Ipsum"_
-- Specialisation: _"Tax Law"_ (dropdown)
-- Bio: _"Lorem ipsum dolor sit amet, consectetur adipiscing elit…"_ (textarea)
-- Hourly Rate: _€90_
-- Avatar: upload control (placeholder avatar shown)
-- CTA: **Save Changes**
+- Display Name · Specialisation (dropdown) · Bio (textarea) · Hourly Rate · Avatar upload
+- CTA: **Salvează**
+
+---
+
+### Consultant Dashboard (`/dashboard`) _(internal — rendered inside `/contul-meu` for `consultant` role)_
+
+The Consultant Dashboard tab content is rendered by the same components (`DashboardPage`, `OverviewTab`, etc.) but hosted within the `/contul-meu` route instead of a standalone route.
+
+**Navigation:** Horizontal tab bar replacing the former sidebar.
 
 ---
 

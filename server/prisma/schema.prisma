@@ -58,6 +58,10 @@ model ConsultantProfile {
   specialisation String
   hourlyRate     Decimal  @map("hourly_rate") @db.Decimal(10, 2)
   avatarUrl                String?  @map("avatar_url")
+  avatarBlobName           String?  @map("avatar_blob_name") @db.Text
+  bannerUrl                String?  @map("banner_url")
+  bannerBlobName           String?  @map("banner_blob_name") @db.Text
+  languages                Json?    @map("languages")
   isActive                 Boolean  @default(true) @map("is_active")
   stripeAccountId          String?  @map("stripe_account_id")
   stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
@@ -65,11 +69,46 @@ model ConsultantProfile {
   createdAt                DateTime @default(now()) @map("created_at")
   updatedAt                DateTime @updatedAt @map("updated_at")
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  availabilitySlots AvailabilitySlot[]
-  sessions          Session[]          @relation("ConsultantSessions")
+  user               User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availabilitySlots  AvailabilitySlot[]
+  sessions           Session[]                    @relation("ConsultantSessions")
+  expertiseCategories ConsultantProfileCategory[]
+  tags               ConsultantTag[]
 
   @@map("consultant_profiles")
+}
+
+model ExpertiseCategory {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+
+  profiles ConsultantProfileCategory[]
+
+  @@map("expertise_categories")
+}
+
+model ConsultantProfileCategory {
+  profileId  Int @map("profile_id")
+  categoryId Int @map("category_id")
+
+  profile  ConsultantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  category ExpertiseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, categoryId])
+  @@map("consultant_profile_categories")
+}
+
+model ConsultantTag {
+  id           Int    @id @default(autoincrement())
+  consultantId Int    @map("consultant_id")
+  tag          String
+
+  consultant ConsultantProfile @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@unique([consultantId, tag])
+  @@index([tag])
+  @@map("consultant_tags")
 }
 
 model AvailabilitySlot {

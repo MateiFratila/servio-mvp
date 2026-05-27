@@ -44,6 +44,27 @@ async function main() {
     }),
   ])
 
+  // ── Expertise categories (platform-defined) ─────────────────────────────
+  const CATEGORIES = [
+    { name: 'Tax Law',           slug: 'tax-law' },
+    { name: 'VAT Compliance',    slug: 'vat-compliance' },
+    { name: 'Payroll',           slug: 'payroll' },
+    { name: 'Audit',             slug: 'audit' },
+    { name: 'Corporate Finance', slug: 'corporate-finance' },
+    { name: 'Estate Planning',   slug: 'estate-planning' },
+    { name: 'Accounting',        slug: 'accounting' },
+    { name: 'Financial Advisory',slug: 'financial-advisory' },
+  ]
+  const categories = {}
+  for (const cat of CATEGORIES) {
+    const c = await prisma.expertiseCategory.upsert({
+      where: { slug: cat.slug },
+      update: { name: cat.name },
+      create: cat,
+    })
+    categories[cat.slug] = c
+  }
+
   // ── Consultant profiles ───────────────────────────────────────────────────
   const [profile1, profile2] = await Promise.all([
     prisma.consultantProfile.upsert({
@@ -57,6 +78,7 @@ async function main() {
         specialisation: 'Tax Law',
         hourlyRate: 90,
         isActive: true,
+        languages: ['en', 'ro'],
       },
     }),
     prisma.consultantProfile.upsert({
@@ -70,9 +92,39 @@ async function main() {
         specialisation: 'VAT Compliance',
         hourlyRate: 75,
         isActive: true,
+        languages: ['en', 'fr'],
       },
     }),
   ])
+
+  // Link seed profiles to categories (idempotent via upsert on the @@id)
+  const categoryLinks = [
+    { profileId: profile1.id, categoryId: categories['tax-law'].id },
+    { profileId: profile1.id, categoryId: categories['vat-compliance'].id },
+    { profileId: profile2.id, categoryId: categories['vat-compliance'].id },
+  ]
+  for (const link of categoryLinks) {
+    await prisma.consultantProfileCategory.upsert({
+      where: { profileId_categoryId: link },
+      update: {},
+      create: link,
+    })
+  }
+
+  // Seed a few example tags
+  const tagData = [
+    { consultantId: profile1.id, tag: 'transfer-pricing' },
+    { consultantId: profile1.id, tag: 'eu-tax-directives' },
+    { consultantId: profile2.id, tag: 'intrastat' },
+    { consultantId: profile2.id, tag: 'reverse-charge' },
+  ]
+  for (const t of tagData) {
+    await prisma.consultantTag.upsert({
+      where: { consultantId_tag: t },
+      update: {},
+      create: t,
+    })
+  }
 
   // ── Availability slots (next 14 days at fixed times) ────────────────────
   const slotTimes = [9, 10, 11, 12, 13, 14, 15, 16, 17] // hours (1h slots, back-to-back)

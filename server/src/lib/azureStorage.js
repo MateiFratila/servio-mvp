@@ -11,16 +11,32 @@ function getContainerClient() {
 
 /**
  * Uploads a file buffer to Azure Blob Storage.
+ * blobPrefix replaces the old sessionId parameter — use any path prefix you like.
  * Returns the blob name (path within the container) to store in the DB.
  */
-async function uploadBlob(sessionId, buffer, contentType) {
-  const blobName = `sessions/${sessionId}/${randomUUID()}`
+async function uploadBlob(blobPrefix, buffer, contentType) {
+  const blobName = `${blobPrefix}/${randomUUID()}`
   const container = getContainerClient()
   const blockBlobClient = container.getBlockBlobClient(blobName)
   await blockBlobClient.uploadData(buffer, {
     blobHTTPHeaders: { blobContentType: contentType },
   })
   return blobName
+}
+
+/**
+ * Streams a blob directly into an Express response.
+ * Sets Content-Type and Content-Length headers automatically.
+ */
+async function streamBlob(blobName, res) {
+  const container = getContainerClient()
+  const blobClient = container.getBlobClient(blobName)
+  const props = await blobClient.getProperties()
+  res.setHeader('Content-Type', props.contentType || 'application/octet-stream')
+  res.setHeader('Content-Length', props.contentLength)
+  res.setHeader('Cache-Control', 'public, max-age=3600')
+  const download = await blobClient.download()
+  download.readableStreamBody.pipe(res)
 }
 
 /**
@@ -47,4 +63,4 @@ async function deleteBlob(blobName) {
   await blobClient.deleteIfExists()
 }
 
-module.exports = { uploadBlob, getDownloadUrl, deleteBlob }
+module.exports = { uploadBlob, streamBlob, getDownloadUrl, deleteBlob }

@@ -76,6 +76,16 @@ router.patch('/me', async (req, res, next) => {
   }
 })
 
+// DELETE /api/users/me — delete own account
+router.delete('/me', async (req, res, next) => {
+  try {
+    await prisma.user.delete({ where: { id: req.user.id } })
+    res.status(204).end()
+  } catch (err) {
+    next(err)
+  }
+})
+
 // PATCH /api/users/:id — admin: change role
 router.patch('/:id', authorize('admin'), async (req, res, next) => {
   try {

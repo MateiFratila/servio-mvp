@@ -29,6 +29,9 @@ export default function Navbar() {
           <span style={{ fontWeight: 700, fontSize: 16 }}>Servio</span>
           <div style={{ display: 'flex', gap: 4 }}>
             <NavLink to="/acasa" style={linkStyle}>Acasă</NavLink>
+            {user && (
+              <NavLink to="/contul-meu" style={linkStyle}>Contul meu</NavLink>
+            )}
             {role === 'admin' && (
               <NavLink to="/tools" style={linkStyle}>Tools</NavLink>
             )}
