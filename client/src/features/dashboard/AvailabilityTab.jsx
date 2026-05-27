@@ -1,19 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { useGetMySlotsQuery, useUpdateMySlotsMutation } from './dashboardApi'
+import { useLabels } from '../../lib/useLabels'
+import {
+  initGrid,
+  toggleSlot,
+  applyMacro,
+  markSaved,
+  setWeekOffset,
+  setMacroScope,
+  selectAvailabilityGrid,
+  selectAvailabilitySaved,
+  selectAvailabilityWeekOffset,
+  selectAvailabilityMacroScope,
+} from './availabilitySlice'
 
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
 const SLOT_DURATION_MIN = 60
+const MAX_WEEKS = 13 // fiscal quarter (~3 months)
 
-// Build the next 7 dates starting tomorrow
-function getUpcomingDates() {
-  const dates = []
-  for (let i = 1; i <= 7; i++) {
-    const d = new Date()
-    d.setDate(d.getDate() + i)
-    d.setHours(0, 0, 0, 0)
-    dates.push(d)
-  }
-  return dates
+// Slots covered by the "9–17" macro: 09:00 start (1hr) through 16:00 start (ends 17:00)
+const MACRO_917_SLOTS = TIME_SLOTS.filter((t) => parseInt(t, 10) < 17)
+
+function getMonday(weekOffset = 0) {
+  const now = new Date()
+  const day = now.getDay()
+  const diff = day === 0 ? -6 : 1 - day // shift to Monday
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diff + weekOffset * 7)
+  monday.setHours(0, 0, 0, 0)
+  return monday
+}
+
+function getWeekDates(weekOffset) {
+  const monday = getMonday(weekOffset)
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d
+  })
 }
 
 function dateKey(date) {
@@ -31,51 +56,71 @@ function fmtDateLabel(date) {
   return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
+function fmtWeekRange(weekOffset) {
+  const days = getWeekDates(weekOffset)
+  const opts = { month: 'short', day: 'numeric' }
+  const start = days[0].toLocaleDateString([], opts)
+  const end = days[6].toLocaleDateString([], { ...opts, year: 'numeric' })
+  return `${start} – ${end}`
+}
+
 export default function AvailabilityTab() {
-  const dates = getUpcomingDates()
+  const L = useLabels().availabilityTab
+  const dispatch = useDispatch()
   const { data: serverSlots = [], isLoading } = useGetMySlotsQuery()
   const [updateSlots, { isLoading: saving }] = useUpdateMySlotsMutation()
 
-  // grid: { 'YYYY-MM-DD': { 'HH:MM': 'available' | 'blocked' | 'booked' } }
-  const [grid, setGrid] = useState({})
-  const [saved, setSaved] = useState(false)
+  const grid = useSelector(selectAvailabilityGrid)
+  const saved = useSelector(selectAvailabilitySaved)
+  const weekOffset = useSelector(selectAvailabilityWeekOffset)
+  const macroScope = useSelector(selectAvailabilityMacroScope)
 
-  // Populate grid from server data when it loads
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
+  const allDates = useMemo(() => {
+    const all = []
+    for (let w = 0; w < MAX_WEEKS; w++) all.push(...getWeekDates(w))
+    return all
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset])
+
+  // Seed Redux grid from server data. On first load does a full init;
+  // on subsequent fetches (e.g. after save) only syncs booked slots.
   useEffect(() => {
-    const initial = {}
-    for (const date of dates) {
+    const computed = {}
+    for (const date of allDates) {
       const key = dateKey(date)
-      initial[key] = {}
+      computed[key] = {}
       for (const time of TIME_SLOTS) {
         const iso = slotISO(date, time)
         const match = serverSlots.find((s) => new Date(s.startTime).toISOString() === iso)
-        if (match) {
-          initial[key][time] = match.isBooked ? 'booked' : 'available'
-        } else {
-          initial[key][time] = 'blocked'
-        }
+        computed[key][time] = match ? (match.isBooked ? 'booked' : 'available') : 'blocked'
       }
     }
-    setGrid(initial)
-    setSaved(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverSlots])
+    dispatch(initGrid(computed))
+  }, [serverSlots, allDates, dispatch])
 
-  function toggle(dateKey, time) {
-    setGrid((prev) => {
-      const current = prev[dateKey]?.[time]
-      if (current === 'booked') return prev
-      return {
-        ...prev,
-        [dateKey]: { ...prev[dateKey], [time]: current === 'available' ? 'blocked' : 'available' },
-      }
-    })
-    setSaved(false)
+  function toggle(dKey, time) {
+    dispatch(toggleSlot({ dateKey: dKey, time }))
+  }
+
+  function handleApplyMacro(macroAction) {
+    const targetDates = macroScope === 'all' ? allDates : weekDates
+    const dateKeys = targetDates
+      .filter((date) => date >= today)
+      .map((date) => ({ key: dateKey(date), isWeekday: date.getDay() >= 1 && date.getDay() <= 5 }))
+    dispatch(applyMacro({ macroAction, dateKeys, timeSlots: TIME_SLOTS, macro917Slots: MACRO_917_SLOTS }))
   }
 
   async function handleSave() {
     const slots = []
-    for (const date of dates) {
+    for (const date of allDates) {
       const key = dateKey(date)
       for (const time of TIME_SLOTS) {
         if (grid[key]?.[time] === 'available') {
@@ -86,7 +131,7 @@ export default function AvailabilityTab() {
       }
     }
     await updateSlots({ slots })
-    setSaved(true)
+    dispatch(markSaved())
   }
 
   function cellStyle(value) {
@@ -95,22 +140,66 @@ export default function AvailabilityTab() {
     return { background: 'var(--grey-bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'pointer' }
   }
 
-  if (isLoading) return <div className="card"><p style={{ color: 'var(--text-muted)' }}>Loading…</p></div>
+  if (isLoading) return <div className="card"><p style={{ color: 'var(--text-muted)' }}>{L.loading}</p></div>
 
   return (
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 className="section-title" style={{ marginBottom: 0 }}>Availability — Next 7 Days</h3>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Legend color="var(--green-bg)" borderColor="#bbf7d0" label="Available" />
-          <Legend color="var(--grey-bg)" borderColor="var(--border)" label="Blocked" />
-          <Legend color="var(--blue-bg)" borderColor="#bfdbfe" label="Booked" />
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 className="section-title" style={{ marginBottom: 0 }}>{L.title}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {!saved && !saving && (
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--warning, #d97706)' }}>
+              <strong>{L.unsavedHint}</strong>
+            </span>
+          )}
           <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save Availability'}
+            {saved ? L.saved : saving ? L.saving : L.save}
           </button>
         </div>
       </div>
 
+      {/* Macros bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, padding: '10px 12px', background: 'var(--grey-bg)', borderRadius: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginRight: 4 }}>{L.quickFill}</span>
+        <button className="btn btn-sm" onClick={() => handleApplyMacro('workdays-917')}>{L.macro917}</button>
+        <button className="btn btn-sm" onClick={() => handleApplyMacro('fill')}>{L.macroFillAll}</button>
+        <button className="btn btn-sm" onClick={() => handleApplyMacro('clear')}>{L.macroClear}</button>
+        <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{L.applyTo}</span>
+        <button
+          className={`btn btn-sm${macroScope === 'week' ? ' btn-primary' : ''}`}
+          onClick={() => dispatch(setMacroScope('week'))}
+        >
+          {L.thisWeek}
+        </button>
+        <button
+          className={`btn btn-sm${macroScope === 'all' ? ' btn-primary' : ''}`}
+          onClick={() => dispatch(setMacroScope('all'))}
+        >
+          {L.allWeeks(MAX_WEEKS)}
+        </button>
+      </div>
+
+      {/* Week navigation */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <button className="btn btn-sm" onClick={() => dispatch(setWeekOffset(Math.max(0, weekOffset - 1)))} disabled={weekOffset === 0}>
+          {L.prev}
+        </button>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', minWidth: 220, textAlign: 'center' }}>
+          {L.weekLabel(weekOffset + 1, MAX_WEEKS, fmtWeekRange(weekOffset))}
+        </span>
+        <button className="btn btn-sm" onClick={() => dispatch(setWeekOffset(Math.min(MAX_WEEKS - 1, weekOffset + 1)))} disabled={weekOffset === MAX_WEEKS - 1}>
+          {L.next}
+        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Legend color="var(--green-bg)" borderColor="#bbf7d0" label={L.legend.available} />
+          <Legend color="var(--grey-bg)" borderColor="var(--border)" label={L.legend.blocked} />
+          <Legend color="var(--blue-bg)" borderColor="#bfdbfe" label={L.legend.booked} />
+        </div>
+      </div>
+
+      {/* Grid */}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'separate', borderSpacing: 4 }}>
           <thead>
@@ -122,17 +211,26 @@ export default function AvailabilityTab() {
             </tr>
           </thead>
           <tbody>
-            {dates.map((date) => {
+            {weekDates.map((date) => {
               const key = dateKey(date)
+              const isPast = date < today
+              const isToday = date.toDateString() === today.toDateString()
               return (
-                <tr key={key}>
-                  <td style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', paddingRight: 8, whiteSpace: 'nowrap' }}>{fmtDateLabel(date)}</td>
+                <tr key={key} style={{ opacity: isPast ? 0.45 : 1 }}>
+                  <td style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', paddingRight: 8, whiteSpace: 'nowrap' }}>
+                    {fmtDateLabel(date)}
+                    {isToday && (
+                      <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', background: 'var(--green-bg)', borderRadius: 4, padding: '1px 5px' }}>
+                        {L.today}
+                      </span>
+                    )}
+                  </td>
                   {TIME_SLOTS.map((time) => {
                     const val = grid[key]?.[time] ?? 'blocked'
                     return (
                       <td
                         key={time}
-                        onClick={() => toggle(key, time)}
+                        onClick={() => !isPast && toggle(key, time)}
                         style={{
                           borderRadius: 6,
                           padding: '8px 12px',
@@ -143,9 +241,10 @@ export default function AvailabilityTab() {
                           userSelect: 'none',
                           border: 'none',
                           ...cellStyle(val),
+                          ...(isPast ? { cursor: 'default' } : {}),
                         }}
                       >
-                        {val === 'booked' ? '●' : val === 'available' ? 'Open' : 'Off'}
+                        {val === 'booked' ? '●' : val === 'available' ? L.cellOpen : L.cellOff}
                       </td>
                     )
                   })}
