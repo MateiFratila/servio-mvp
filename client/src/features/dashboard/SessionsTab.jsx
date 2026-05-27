@@ -7,8 +7,6 @@ function fmtDateTime(iso) {
   return new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const STATUSES = ['All', 'pending', 'pending_confirmation', 'confirmed', 'completed', 'cancelled']
-
 const STATUS_BADGE = {
   pending: 'badge status-pending',
   pending_confirmation: 'badge status-pending',
@@ -22,6 +20,9 @@ export default function SessionsTab() {
   const { data, isLoading, refetch, isFetching } = useGetMySessionsAsConsultantQuery()
   const [updateStatus] = useUpdateSessionStatusMutation()
   const navigate = useNavigate()
+  const t = useLabels()
+
+  const STATUSES = [t.sessionsTab.filterAll, 'pending', 'pending_confirmation', 'confirmed', 'completed', 'cancelled']
 
   const allSessions = data?.data ?? []
   const sessions = statusFilter === t.sessionsTab.filterAll ? allSessions : allSessions.filter((s) => s.status === statusFilter)

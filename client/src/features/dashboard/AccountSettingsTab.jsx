@@ -67,13 +67,6 @@ function FinanciarSection() {
               </button>
             </div>
           )}
-          {data.onboardingComplete && (
-            <div>
-              <button className="btn btn-secondary btn-sm" onClick={handleOnboard} disabled={isStarting}>
-                {isStarting ? 'Se redirecționează…' : 'Actualizează datele bancare'}
-              </button>
-            </div>
-          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

@@ -477,11 +477,30 @@ router.post('/me/connect/onboard', authenticate, authorize('consultant'), async 
     }
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173'
+
+    // Ask Stripe directly for the current account state — don't trust the DB flag,
+    // since the self-heal check could have set it prematurely.
+    const stripeAccount = await stripe.accounts.retrieve(accountId)
+    const linkType = stripeAccount.details_submitted ? 'account_update' : 'account_onboarding'
+
+    // Sync DB if needed
+    if (stripeAccount.details_submitted && !profile.stripeOnboardingComplete) {
+      await prisma.consultantProfile.update({
+        where: { id: profile.id },
+        data: { stripeOnboardingComplete: true },
+      })
+    } else if (!stripeAccount.details_submitted && profile.stripeOnboardingComplete) {
+      await prisma.consultantProfile.update({
+        where: { id: profile.id },
+        data: { stripeOnboardingComplete: false },
+      })
+    }
+
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${appUrl}/acasa?tab=contul-meu&connect=refresh`,
       return_url: `${appUrl}/acasa?tab=contul-meu&connect=success`,
-      type: profile.stripeOnboardingComplete ? 'account_update' : 'account_onboarding',
+      type: linkType,
     })
 
     res.json({ url: accountLink.url })
