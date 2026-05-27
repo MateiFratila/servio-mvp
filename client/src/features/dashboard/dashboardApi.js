@@ -26,6 +26,10 @@ export const dashboardApi = api.injectEndpoints({
       query: () => '/consultants/categories',
       providesTags: ['Category'],
     }),
+    getSpecialisations: build.query({
+      query: () => '/consultants/specialisations',
+      providesTags: ['Specialisation'],
+    }),
     getMySlots: build.query({
       query: () => '/consultants/me/slots',
       providesTags: ['Slot'],
@@ -63,6 +67,7 @@ export const {
   useUploadAvatarMutation,
   useUploadBannerMutation,
   useGetExpertiseCategoriesQuery,
+  useGetSpecialisationsQuery,
   useGetMySlotsQuery,
   useUpdateMySlotsMutation,
   useUpdateSessionStatusMutation,

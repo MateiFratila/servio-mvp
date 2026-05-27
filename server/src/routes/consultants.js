@@ -28,7 +28,6 @@ const CONSULTANT_SELECT = {
   id: true,
   displayName: true,
   description: true,
-  specialisation: true,
   hourlyRate: true,
   avatarUrl: true,
   bannerUrl: true,
@@ -38,8 +37,11 @@ const CONSULTANT_SELECT = {
   platformFeePct: true,
   stripeAccountId: true,
   stripeOnboardingComplete: true,
+  specialisations: {
+    select: { specialisation: { select: { id: true, name: true, slug: true } } },
+  },
   expertiseCategories: {
-    select: { category: { select: { id: true, name: true, slug: true } } },
+    select: { category: { select: { id: true, name: true, slug: true, specialisationId: true } } },
   },
   tags: { select: { id: true, tag: true } },
 }
@@ -48,7 +50,7 @@ const CONSULTANT_SELECT = {
 router.get('/', optionalAuthenticate, async (req, res, next) => {
   try {
     const {
-      specialisation,
+      specialisationIds,
       maxRate,
       availableToday,
       sortBy = 'displayName',
@@ -61,8 +63,11 @@ router.get('/', optionalAuthenticate, async (req, res, next) => {
     const pageSize = Math.min(50, Math.max(1, parseInt(limit)))
 
     const where = { isActive: true }
-    if (specialisation) {
-      where.specialisation = { in: specialisation.split(',') }
+    if (specialisationIds) {
+      const ids = specialisationIds.split(',').map(Number).filter(Boolean)
+      if (ids.length > 0) {
+        where.specialisations = { some: { specialisationId: { in: ids } } }
+      }
     }
     if (maxRate) {
       where.hourlyRate = { lte: parseFloat(maxRate) }
@@ -98,7 +103,28 @@ router.get('/', optionalAuthenticate, async (req, res, next) => {
   }
 })
 
-// GET /api/consultants/categories — platform-defined expertise categories (public)
+// GET /api/consultants/specialisations — all specialisations with their expertise areas (public)
+router.get('/specialisations', async (_req, res, next) => {
+  try {
+    const specialisations = await prisma.specialisation.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        expertiseAreas: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, slug: true },
+        },
+      },
+    })
+    res.json(specialisations)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/consultants/categories — flat expertise categories list (backward compat)
 router.get('/categories', async (_req, res, next) => {
   try {
     const categories = await prisma.expertiseCategory.findMany({ orderBy: { name: 'asc' } })
@@ -141,8 +167,8 @@ router.get('/me', authenticate, authorize('consultant', 'admin'), async (req, re
 })
 
 // PATCH /api/consultants/me — consultant updates their own profile
-// Body may include: displayName, description, specialisation, hourlyRate,
-//   languages (string[]), categoryIds (number[]), tags (string[])
+// Body may include: displayName, description, hourlyRate,
+//   languages (string[]), specialisationIds (number[]), categoryIds (number[]), tags (string[])
 router.patch('/me', authenticate, authorize('consultant', 'admin'), async (req, res, next) => {
   try {
     const profile = await prisma.consultantProfile.findUnique({
@@ -151,12 +177,11 @@ router.patch('/me', authenticate, authorize('consultant', 'admin'), async (req, 
     })
     if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
 
-    const { displayName, description, specialisation, hourlyRate, languages, categoryIds, tags } = req.body
+    const { displayName, description, hourlyRate, languages, specialisationIds, categoryIds, tags } = req.body
 
     const data = {}
     if (displayName !== undefined) data.displayName = String(displayName).trim()
     if (description !== undefined) data.description = description
-    if (specialisation !== undefined) data.specialisation = specialisation
     if (hourlyRate !== undefined) data.hourlyRate = parseFloat(hourlyRate)
     if (languages !== undefined) {
       if (!Array.isArray(languages)) return res.status(400).json({ error: 'languages must be an array' })
@@ -167,6 +192,19 @@ router.patch('/me', authenticate, authorize('consultant', 'admin'), async (req, 
 
     if (Object.keys(data).length > 0) {
       ops.push(prisma.consultantProfile.update({ where: { id: profile.id }, data }))
+    }
+
+    if (specialisationIds !== undefined) {
+      if (!Array.isArray(specialisationIds)) return res.status(400).json({ error: 'specialisationIds must be an array' })
+      ops.push(prisma.consultantProfileSpecialisation.deleteMany({ where: { profileId: profile.id } }))
+      if (specialisationIds.length > 0) {
+        ops.push(
+          prisma.consultantProfileSpecialisation.createMany({
+            data: specialisationIds.map((sid) => ({ profileId: profile.id, specialisationId: Number(sid) })),
+            skipDuplicates: true,
+          }),
+        )
+      }
     }
 
     if (categoryIds !== undefined) {
@@ -416,12 +454,11 @@ router.patch('/:id', authenticate, authorize('admin'), async (req, res, next) =>
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const { displayName, description, specialisation, hourlyRate, isActive, platformFeePct } = req.body
+    const { displayName, description, hourlyRate, isActive, platformFeePct } = req.body
     const data = {}
 
     if (displayName !== undefined) data.displayName = displayName
     if (description !== undefined) data.description = description
-    if (specialisation !== undefined) data.specialisation = specialisation
     if (hourlyRate !== undefined) data.hourlyRate = parseFloat(hourlyRate)
     if (isActive !== undefined) data.isActive = Boolean(isActive)
     if (platformFeePct !== undefined) {

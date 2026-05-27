@@ -11,7 +11,8 @@ const STATUS_BADGE = {
 export default function ConsultantCard({ consultant }) {
   const navigate = useNavigate()
   const t = useLabels()
-  const { id, displayName, specialisation, bio, hourlyRate } = consultant
+  const { id, displayName, specialisations = [], bio, hourlyRate } = consultant
+  const specNames = specialisations.map((cs) => cs.specialisation.name)
   const avatarSrc = `/api/consultants/${id}/avatar`
 
   return (
@@ -25,9 +26,15 @@ export default function ConsultantCard({ consultant }) {
         />
         <div>
           <div style={{ fontWeight: 600 }}>{displayName}</div>
-          <span className={STATUS_BADGE['confirmed']} style={{ fontSize: 11, background: 'var(--blue-bg)', color: 'var(--blue)' }}>
-            {specialisation}
-          </span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
+            {specNames.length > 0 ? specNames.map((name) => (
+              <span key={name} className={STATUS_BADGE['confirmed']} style={{ fontSize: 11, background: 'var(--blue-bg)', color: 'var(--blue)' }}>
+                {name}
+              </span>
+            )) : (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -36,7 +43,7 @@ export default function ConsultantCard({ consultant }) {
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-        <span style={{ fontWeight: 600, color: 'var(--text)' }}>€{hourlyRate} {t.consultantCard.perHour}</span>
+        <span style={{ fontWeight: 600, color: 'var(--text)' }}>€{hourlyRate} {t.consultantCard.perHour} <span style={{ fontWeight: 400, fontSize: '0.85em', color: 'var(--text-muted)' }}>{t.consultantCard.plusVat}</span></span>
         <button className="btn btn-primary btn-sm" onClick={() => navigate(`/catalog/${id}`)}>
           {t.consultantCard.viewProfile}
         </button>

@@ -44,6 +44,7 @@ export const LABELS = {
     consultantCard: {
       viewProfile: 'Vezi profilul',
       perHour: '/ oră',
+      plusVat: '+TVA',
     },
     statusLabels: {
       pending: 'Așteptare plată',
@@ -295,6 +296,7 @@ export const LABELS = {
     consultantCard: {
       viewProfile: 'View Profile',
       perHour: '/ hr',
+      plusVat: '+VAT',
     },
     statusLabels: {
       pending: 'Awaiting payment',

@@ -1,6 +1,7 @@
 const { Router } = require('express')
 const prisma = require('../db')
 const stripe = require('../lib/stripe')
+const { getEurToRonRate } = require('../lib/bnr')
 const { createRoom } = require('../lib/daily')
 const { authenticate } = require('../middleware/authenticate')
 const { sendBookingPendingConfirmation } = require('../emails')
@@ -65,8 +66,9 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
         await tx.availabilitySlot.update({ where: { id: slot2.id }, data: { isBooked: true } })
       }
 
-      // Calculate amount in smallest unit (bani: 1 RON = 100 bani)
-      const amountInBani = Math.round(Number(profile.hourlyRate) * (durationMinutes / 60) * 100)
+      // Convert hourly rate from EUR to RON using BNR exchange rate, apply 21% VAT, then to bani (1 RON = 100 bani)
+      const eurToRon = await getEurToRonRate()
+      const amountInBani = Math.round(Number(profile.hourlyRate) * (durationMinutes / 60) * eurToRon * 1.21 * 100)
 
       // Create Stripe PaymentIntent
       // If the consultant has completed Connect onboarding, split automatically using

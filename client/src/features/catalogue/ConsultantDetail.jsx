@@ -2,15 +2,18 @@ import { useParams } from 'react-router-dom'
 import BookingPanel from './BookingPanel'
 import MySessionsPanel from './MySessionsPanel'
 import { useGetConsultantQuery } from './catalogueApi'
+import { useLabels } from '../../lib/useLabels'
 
 export default function ConsultantDetail() {
   const { id } = useParams()
   const { data: consultant, isLoading, isError } = useGetConsultantQuery(id)
+  const t = useLabels()
 
   if (isLoading) return <div className="container" style={{ padding: '48px 24px', color: 'var(--text-muted)' }}>Loading…</div>
   if (isError || !consultant) return <div className="container" style={{ padding: '48px 24px', color: 'var(--text-muted)' }}>Consultant not found.</div>
 
-  const tags = [consultant.specialisation, ...(consultant.expertiseCategories ?? []).map((ec) => ec.category.name)].filter(Boolean)
+  const specNames = (consultant.specialisations ?? []).map((cs) => cs.specialisation.name)
+  const tags = (consultant.expertiseCategories ?? []).map((ec) => ec.category.name)
   const avatarSrc = `/api/consultants/${id}/avatar`
   const bannerSrc = `/api/consultants/${id}/banner`
 
@@ -53,17 +56,34 @@ export default function ConsultantDetail() {
 
           {/* Content — paddingTop leaves room for the overlapping avatar */}
           <div style={{ padding: '52px 24px 24px' }}>
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{consultant.displayName}</h2>
-            <span className="badge badge-blue" style={{ marginBottom: 12, display: 'inline-block' }}>{consultant.specialisation}</span>
-            <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: 14 }}>{consultant.description}</p>
-            <div style={{ marginTop: 16, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600, fontSize: 16 }}>€{Number(consultant.hourlyRate).toFixed(0)} / hr</span>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {tags.map((t) => (
-                  <span key={t} className="badge badge-grey">{t}</span>
-                ))}
-              </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{consultant.displayName}</h2>
+              <span style={{ fontWeight: 600, fontSize: 16, whiteSpace: 'nowrap' }}>€{Number(consultant.hourlyRate).toFixed(0)} {t.consultantCard.perHour} <span style={{ fontWeight: 400, fontSize: 13, color: 'var(--text-muted)' }}>{t.consultantCard.plusVat}</span></span>
             </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {specNames.map((name) => (
+                <span key={name} className="badge badge-blue">{name}</span>
+              ))}
+            </div>
+            <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: 14 }}>{consultant.description}</p>
+            {consultant.specialisations?.length > 0 && consultant.expertiseCategories?.length > 0 && (
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {consultant.specialisations.map((cs) => {
+                  const areas = consultant.expertiseCategories.filter((ec) => ec.category.specialisationId === cs.specialisation.id)
+                  if (areas.length === 0) return null
+                  return (
+                    <div key={cs.specialisation.id}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{cs.specialisation.name}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {areas.map((ec) => (
+                          <span key={ec.category.id} className="badge badge-grey">{ec.category.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
             {consultant.languages?.length > 0 && (
               <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>Languages:</span>

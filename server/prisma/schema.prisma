@@ -55,7 +55,6 @@ model ConsultantProfile {
   userId         Int      @unique @map("user_id")
   displayName    String   @map("display_name")
   description    String?  @db.Text
-  specialisation String
   hourlyRate     Decimal  @map("hourly_rate") @db.Decimal(10, 2)
   avatarUrl                String?  @map("avatar_url")
   avatarBlobName           String?  @map("avatar_blob_name") @db.Text
@@ -73,18 +72,45 @@ model ConsultantProfile {
   availabilitySlots  AvailabilitySlot[]
   sessions           Session[]                    @relation("ConsultantSessions")
   expertiseCategories ConsultantProfileCategory[]
+  specialisations    ConsultantProfileSpecialisation[]
   tags               ConsultantTag[]
 
   @@map("consultant_profiles")
 }
 
+model Specialisation {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  profiles       ConsultantProfileSpecialisation[]
+  expertiseAreas ExpertiseCategory[]
+
+  @@map("specialisations")
+}
+
+model ConsultantProfileSpecialisation {
+  profileId        Int @map("profile_id")
+  specialisationId Int @map("specialisation_id")
+
+  profile        ConsultantProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  specialisation Specialisation    @relation(fields: [specialisationId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, specialisationId])
+  @@map("consultant_profile_specialisations")
+}
+
 model ExpertiseCategory {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  slug String @unique
+  id               Int  @id @default(autoincrement())
+  name             String @unique
+  slug             String @unique
+  specialisationId Int?   @map("specialisation_id")
 
-  profiles ConsultantProfileCategory[]
+  specialisation Specialisation?           @relation(fields: [specialisationId], references: [id], onDelete: SetNull)
+  profiles       ConsultantProfileCategory[]
 
+  @@index([specialisationId])
   @@map("expertise_categories")
 }
 

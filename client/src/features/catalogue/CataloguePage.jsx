@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import ConsultantCard from './ConsultantCard'
-import { useGetConsultantsQuery } from './catalogueApi'
+import { useGetConsultantsQuery, useGetSpecialisationsQuery } from './catalogueApi'
 import { useLabels } from '../../lib/useLabels'
-
-const SPECIALISATIONS = ['Tax Law', 'VAT Compliance', 'Payroll', 'Audit', 'Corporate Finance', 'Estate Planning']
 
 export default function CataloguePage() {
   const t = useLabels()
-  const [selectedSpecs, setSelectedSpecs] = useState([])
+  const [selectedSpecIds, setSelectedSpecIds] = useState([])
   const [maxRate, setMaxRate] = useState(300)
   const [availableOnly, setAvailableOnly] = useState(false)
   const [sortBy, setSortBy] = useState('displayName')
 
+  const { data: specialisationsData = [] } = useGetSpecialisationsQuery()
+
   const { data, isLoading } = useGetConsultantsQuery({
-    ...(selectedSpecs.length && { specialisation: selectedSpecs.join(',') }),
+    ...(selectedSpecIds.length && { specialisationIds: selectedSpecIds.join(',') }),
     ...(maxRate < 300 && { maxRate }),
     ...(availableOnly && { availableToday: 'true' }),
     sortBy: sortBy === 'relevance' ? 'displayName' : sortBy === 'name' ? 'displayName' : 'hourlyRate',
@@ -23,13 +23,12 @@ export default function CataloguePage() {
 
   const consultants = data?.data ?? []
 
-  function toggleSpec(spec) {
-    setSelectedSpecs((prev) =>
-      prev.includes(spec) ? prev.filter((s) => s !== spec) : [...prev, spec]
+  function toggleSpec(id) {
+    setSelectedSpecIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     )
   }
 
-  // client-side name sort isn't needed since server handles it, but keep rate sort for desc
   const sorted = sortBy === 'rate-desc'
     ? [...consultants].sort((a, b) => b.hourlyRate - a.hourlyRate)
     : consultants
@@ -44,7 +43,7 @@ export default function CataloguePage() {
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="container" style={{ display: 'flex', gap: 40, padding: '16px 24px' }}>
           <Stat label={t.catalogue.stats.available} value={data?.total ?? '—'} />
-          <Stat label={t.catalogue.stats.specialisations} value={SPECIALISATIONS.length} />
+          <Stat label={t.catalogue.stats.specialisations} value={specialisationsData.length} />
           <Stat label={t.catalogue.stats.avgRate} value={avgRate ? `€${avgRate}` : '—'} />
         </div>
       </div>
@@ -55,15 +54,15 @@ export default function CataloguePage() {
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24 }}>
             <div>
               <div style={{ fontWeight: 600, marginBottom: 10 }}>{t.catalogue.filters.specialisation}</div>
-              {SPECIALISATIONS.map((s) => (
-                <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: 'pointer', fontSize: 13 }}>
+              {specialisationsData.map((s) => (
+                <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: 'pointer', fontSize: 13 }}>
                   <input
                     type="checkbox"
                     style={{ width: 'auto' }}
-                    checked={selectedSpecs.includes(s)}
-                    onChange={() => toggleSpec(s)}
+                    checked={selectedSpecIds.includes(s.id)}
+                    onChange={() => toggleSpec(s.id)}
                   />
-                  {s}
+                  {s.name}
                 </label>
               ))}
             </div>

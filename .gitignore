@@ -10,6 +10,9 @@ client/dist/
 .env.*.local
 .env.prod
 
+# BNR exchange rate cache
+server/src/lib/bnr-cache.xml
+
 # logs
 npm-debug.log*
 *.log

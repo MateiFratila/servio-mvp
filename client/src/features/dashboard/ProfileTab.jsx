@@ -4,7 +4,7 @@ import {
   useUpdateMyProfileMutation,
   useUploadAvatarMutation,
   useUploadBannerMutation,
-  useGetExpertiseCategoriesQuery,
+  useGetSpecialisationsQuery,
 } from './dashboardApi'
 
 const LANGUAGES = [
@@ -18,8 +18,6 @@ const LANGUAGES = [
   { code: 'hu', label: 'Hungarian' },
   { code: 'pl', label: 'Polish' },
 ]
-
-const SPECIALISATIONS = ['Tax Law', 'VAT Compliance', 'Payroll', 'Audit', 'Corporate Finance', 'Estate Planning']
 
 // ── Small helpers ──────────────────────────────────────────────────────────
 
@@ -162,6 +160,123 @@ function MultiSelect({ options, selected, onChange, labelKey = 'label', valueKey
   )
 }
 
+// ── Specialisation picker ─────────────────────────────────────────────────
+
+function SpecialisationPicker({ specialisationIds, onChangeIds, categoryIds, onChangeCategoryIds, allSpecialisations }) {
+  function addSpecialisation() {
+    const available = allSpecialisations.filter((s) => !specialisationIds.includes(s.id))
+    if (available.length === 0) return
+    onChangeIds([...specialisationIds, available[0].id])
+  }
+
+  function removeSpecialisation(specId) {
+    const spec = allSpecialisations.find((s) => s.id === specId)
+    const areaIds = spec ? spec.expertiseAreas.map((a) => a.id) : []
+    onChangeIds(specialisationIds.filter((id) => id !== specId))
+    onChangeCategoryIds(categoryIds.filter((id) => !areaIds.includes(id)))
+  }
+
+  function changeSpecialisation(oldId, newId) {
+    const oldSpec = allSpecialisations.find((s) => s.id === oldId)
+    const oldAreaIds = oldSpec ? oldSpec.expertiseAreas.map((a) => a.id) : []
+    onChangeIds(specialisationIds.map((id) => (id === oldId ? newId : id)))
+    onChangeCategoryIds(categoryIds.filter((id) => !oldAreaIds.includes(id)))
+  }
+
+  function toggleArea(areaId) {
+    onChangeCategoryIds(
+      categoryIds.includes(areaId) ? categoryIds.filter((id) => id !== areaId) : [...categoryIds, areaId],
+    )
+  }
+
+  const canAdd = specialisationIds.length < allSpecialisations.length
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {specialisationIds.map((specId) => {
+        const spec = allSpecialisations.find((s) => s.id === specId)
+        const availableOptions = allSpecialisations.filter((s) => !specialisationIds.includes(s.id) || s.id === specId)
+        return (
+          <div key={specId} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Specialisation select row */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select
+                value={specId}
+                onChange={(e) => changeSpecialisation(specId, Number(e.target.value))}
+                style={{ flex: 1 }}
+              >
+                {availableOptions.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+                <option value="" disabled>— Sugerează o specializare</option>
+              </select>
+              {specialisationIds.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeSpecialisation(specId)}
+                  style={{ padding: '0 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1 }}
+                  aria-label="Elimină specializarea"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Expertise areas for this specialisation */}
+            {spec && spec.expertiseAreas.length > 0 && (
+              <div>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Arii de expertiză</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {spec.expertiseAreas.map((area) => {
+                    const active = categoryIds.includes(area.id)
+                    return (
+                      <button
+                        key={area.id}
+                        type="button"
+                        onClick={() => toggleArea(area.id)}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: 999,
+                          border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                          background: active ? 'var(--primary)' : 'var(--surface)',
+                          color: active ? '#fff' : 'var(--text)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          fontWeight: active ? 600 : 400,
+                        }}
+                      >
+                        {area.name}
+                      </button>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    disabled
+                    style={{ padding: '3px 10px', borderRadius: 999, border: '1.5px dashed var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'not-allowed', opacity: 0.6 }}
+                  >
+                    + Sugerează o arie…
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      <div>
+        <button
+          type="button"
+          onClick={addSpecialisation}
+          disabled={!canAdd}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', border: '1.5px dashed var(--border)', borderRadius: 'var(--radius)', background: 'transparent', cursor: canAdd ? 'pointer' : 'not-allowed', color: canAdd ? 'var(--primary)' : 'var(--text-muted)', fontSize: 13, fontWeight: 500, opacity: canAdd ? 1 : 0.5 }}
+        >
+          + Adaugă specializare
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function HourlyRateTooltip() {
   const [visible, setVisible] = useState(false)
   return (
@@ -198,7 +313,7 @@ function HourlyRateTooltip() {
 
 export default function ProfileTab() {
   const { data: me, isLoading } = useGetMyProfileQuery()
-  const { data: allCategories = [] } = useGetExpertiseCategoriesQuery()
+  const { data: allSpecialisations = [] } = useGetSpecialisationsQuery()
   const [updateProfile, { isLoading: saving }] = useUpdateMyProfileMutation()
   const [uploadAvatar, { isLoading: uploadingAvatar }] = useUploadAvatarMutation()
   const [uploadBanner, { isLoading: uploadingBanner }] = useUploadBannerMutation()
@@ -211,7 +326,7 @@ export default function ProfileTab() {
     if (profileData && !form) {
       setForm({
         displayName: profileData.displayName ?? '',
-        specialisation: profileData.specialisation ?? SPECIALISATIONS[0],
+        specialisationIds: (profileData.specialisations ?? []).map((cs) => cs.specialisation.id),
         description: profileData.description ?? '',
         hourlyRate: Number(profileData.hourlyRate) ?? 0,
         languages: Array.isArray(profileData.languages) ? profileData.languages : [],
@@ -230,7 +345,7 @@ export default function ProfileTab() {
     e.preventDefault()
     await updateProfile({
       displayName: form.displayName,
-      specialisation: form.specialisation,
+      specialisationIds: form.specialisationIds,
       description: form.description,
       hourlyRate: form.hourlyRate,
       languages: form.languages,
@@ -288,10 +403,22 @@ export default function ProfileTab() {
           </div>
 
           <div className="form-group">
-            <label>Primary Specialisation</label>
-            <select value={form.specialisation} onChange={(e) => handleChange('specialisation', e.target.value)}>
-              {SPECIALISATIONS.map((s) => <option key={s}>{s}</option>)}
-            </select>
+            <label>Specializări</label>
+            {form.specialisationIds.length === 0 && allSpecialisations.length > 0 && (
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+                Nicio specializare selectată. Apasă butonul de mai jos pentru a adăuga una.
+              </p>
+            )}
+            <SpecialisationPicker
+              specialisationIds={form.specialisationIds}
+              onChangeIds={(v) => {
+                handleChange('specialisationIds', v)
+                setSaved(false)
+              }}
+              categoryIds={form.categoryIds}
+              onChangeCategoryIds={(v) => handleChange('categoryIds', v)}
+              allSpecialisations={allSpecialisations}
+            />
           </div>
 
           <div className="form-group">
@@ -309,18 +436,6 @@ export default function ProfileTab() {
               min={0}
               value={form.hourlyRate}
               onChange={(e) => handleChange('hourlyRate', Number(e.target.value))}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Expertise Areas</label>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Select all that apply</p>
-            <MultiSelect
-              options={allCategories}
-              selected={form.categoryIds}
-              onChange={(v) => handleChange('categoryIds', v)}
-              labelKey="name"
-              valueKey="id"
             />
           </div>
 

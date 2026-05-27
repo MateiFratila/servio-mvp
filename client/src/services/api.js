@@ -12,6 +12,6 @@ export const api = createApi({
       return headers
     },
   }),
-  tagTypes: ['Consultant', 'Session', 'User', 'Slot', 'SessionDocument', 'Category'],
+  tagTypes: ['Consultant', 'Session', 'User', 'Slot', 'SessionDocument', 'Category', 'Specialisation'],
   endpoints: () => ({}),
 })

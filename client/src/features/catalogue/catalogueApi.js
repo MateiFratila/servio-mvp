@@ -9,6 +9,10 @@ export const catalogueApi = api.injectEndpoints({
       }),
       providesTags: ['Consultant'],
     }),
+    getSpecialisations: build.query({
+      query: () => '/consultants/specialisations',
+      providesTags: ['Specialisation'],
+    }),
     getConsultant: build.query({
       query: (id) => `/consultants/${id}`,
       providesTags: (_res, _err, id) => [{ type: 'Consultant', id }],
@@ -80,6 +84,7 @@ export const catalogueApi = api.injectEndpoints({
 
 export const {
   useGetConsultantsQuery,
+  useGetSpecialisationsQuery,
   useGetConsultantQuery,
   useGetConsultantSlotsQuery,
   useGetMySessionsAsClientQuery,
