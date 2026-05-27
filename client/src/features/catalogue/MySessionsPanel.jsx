@@ -1,30 +1,34 @@
 import { useState } from 'react'
 import { useGetMySessionsAsClientQuery, useCancelSessionMutation } from './catalogueApi'
 import { useNavigate } from 'react-router-dom'
+import { useLabels } from '../../lib/useLabels'
 
 function fmtDateTime(iso) {
   return new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const STATUS_META = {
-  pending:              { label: 'Awaiting payment',     cls: 'badge status-pending',    tip: 'Payment in progress.' },
-  pending_confirmation: { label: 'Pending confirmation', cls: 'badge status-pending',    tip: 'Payment received. Waiting for the consultant to confirm your session.' },
-  confirmed:            { label: 'Confirmed',            cls: 'badge status-confirmed',  tip: 'The consultant has confirmed. Your session is locked in.' },
-  completed:            { label: 'Completed',            cls: 'badge status-completed',  tip: 'The session has ended successfully.' },
-  cancelled:            { label: 'Cancelled',            cls: 'badge status-cancelled',  tip: 'This session was cancelled.' },
+const STATUS_CLS = {
+  pending:              'badge status-pending',
+  pending_confirmation: 'badge status-pending',
+  confirmed:            'badge status-confirmed',
+  completed:            'badge status-completed',
+  cancelled:            'badge status-cancelled',
 }
 
 function StatusBadge({ status }) {
   const [visible, setVisible] = useState(false)
-  const meta = STATUS_META[status] ?? { label: status, cls: 'badge', tip: null }
+  const t = useLabels()
+  const label = t.statusLabels[status] ?? status
+  const tip = t.statusTips[status] ?? null
+  const cls = STATUS_CLS[status] ?? 'badge'
   return (
     <span
       style={{ position: 'relative', display: 'inline-block' }}
       onMouseEnter={() => setVisible(true)}
       onMouseLeave={() => setVisible(false)}
     >
-      <span className={meta.cls} style={{ cursor: meta.tip ? 'help' : 'default' }}>{meta.label}</span>
-      {visible && meta.tip && (
+      <span className={cls} style={{ cursor: tip ? 'help' : 'default' }}>{label}</span>
+      {visible && tip && (
         <span style={{
           position: 'absolute',
           bottom: 'calc(100% + 8px)',
@@ -40,14 +44,14 @@ function StatusBadge({ status }) {
           zIndex: 20,
           boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
         }}>
-          {meta.tip}
+          {tip}
         </span>
       )}
     </span>
   )
 }
 
-function ConfirmModal({ message, onConfirm, onClose, loading }) {
+function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, onClose, loading }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
@@ -55,12 +59,12 @@ function ConfirmModal({ message, onConfirm, onClose, loading }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <div className="card" style={{ maxWidth: 400, width: '90%', padding: 28, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
-        <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 12 }}>Are you sure?</h3>
+        <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 12 }}>{title}</h3>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>{message}</p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn btn-secondary" onClick={onClose} disabled={loading}>Go back</button>
+          <button className="btn btn-secondary" onClick={onClose} disabled={loading}>{cancelLabel}</button>
           <button className="btn btn-danger" onClick={onConfirm} disabled={loading}>
-            {loading ? 'Cancelling…' : 'Yes, cancel session'}
+            {confirmLabel}
           </button>
         </div>
       </div>
@@ -72,6 +76,7 @@ export default function MySessionsPanel() {
   const { data, isLoading, refetch, isFetching } = useGetMySessionsAsClientQuery()
   const [cancelSession, { isLoading: cancelling }] = useCancelSessionMutation()
   const navigate = useNavigate()
+  const t = useLabels()
   const sessions = data?.data ?? []
   const [cancelTarget, setCancelTarget] = useState(null)
 
@@ -87,14 +92,17 @@ export default function MySessionsPanel() {
     <div className="card">
       {cancelTarget && (
         <ConfirmModal
-          message="This will cancel the session and release the time slot. This action cannot be undone."
+          message={t.mySessionsPanel.confirmModal.message}
+          title={t.mySessionsPanel.confirmModal.title}
+          cancelLabel={t.mySessionsPanel.confirmModal.goBack}
+          confirmLabel={cancelling ? t.mySessionsPanel.confirmModal.cancelling : t.mySessionsPanel.confirmModal.confirmCancel}
           loading={cancelling}
           onConfirm={handleCancel}
           onClose={() => setCancelTarget(null)}
         />
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h3 className="section-title" style={{ marginBottom: 0 }}>My Sessions</h3>
+        <h3 className="section-title" style={{ marginBottom: 0 }}>{t.mySessionsPanel.title}</h3>
         {hasPendingRoom && (
           <button
             className="btn btn-secondary btn-sm"
@@ -102,23 +110,23 @@ export default function MySessionsPanel() {
             onClick={refetch}
             title="Refresh to check if meeting room is ready"
           >
-            {isFetching ? 'Checking…' : '↻ Refresh'}
+            {isFetching ? t.mySessionsPanel.checking : t.mySessionsPanel.refresh}
           </button>
         )}
       </div>
       {isLoading ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t.mySessionsPanel.loading}</p>
       ) : sessions.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No sessions yet.</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t.mySessionsPanel.noSessions}</p>
       ) : (
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Consultant</th>
-                <th>Date &amp; Time</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{t.mySessionsPanel.columns.consultant}</th>
+                <th>{t.mySessionsPanel.columns.dateTime}</th>
+                <th>{t.mySessionsPanel.columns.status}</th>
+                <th>{t.mySessionsPanel.columns.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -132,11 +140,11 @@ export default function MySessionsPanel() {
                       className="btn btn-secondary btn-sm"
                       onClick={() => navigate(`/sessions/${s.id}`)}
                     >
-                      See Details
+                      {t.mySessionsPanel.seeDetails}
                     </button>
                     {(s.status === 'pending_confirmation' || s.status === 'confirmed') && !s.meetingUrl && (
                       <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        Setting up room…
+                        {t.mySessionsPanel.settingUpRoom}
                       </span>
                     )}
                     {s.status === 'confirmed' && s.meetingUrl && (
@@ -144,7 +152,7 @@ export default function MySessionsPanel() {
                         className="btn btn-primary btn-sm"
                         onClick={() => navigate(`/meeting/${s.id}`)}
                       >
-                        Join
+                        {t.mySessionsPanel.join}
                       </button>
                     )}
                     {(s.status === 'pending' || s.status === 'pending_confirmation') && (
@@ -153,7 +161,7 @@ export default function MySessionsPanel() {
                         disabled={cancelling}
                         onClick={() => setCancelTarget(s.id)}
                       >
-                        Cancel
+                        {t.mySessionsPanel.cancel}
                       </button>
                     )}
                   </td>

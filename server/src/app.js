@@ -35,8 +35,12 @@ if (process.env.NODE_ENV === 'production') {
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
   const status = err.status || err.statusCode || 500
-  const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Internal server error')
-  res.status(status).json({ error: message })
+  // Surface Stripe API errors clearly (they contain no sensitive user data)
+  const isStripeError = err.type && err.type.startsWith('Stripe')
+  const message = (process.env.NODE_ENV !== 'production' || isStripeError)
+    ? (err.message || 'Internal server error')
+    : 'Internal server error'
+  res.status(status).json({ error: message, ...(isStripeError && { stripeCode: err.code, stripeParam: err.param }) })
 })
 
 module.exports = app

@@ -3,11 +3,13 @@ import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { setCredentials } from './authSlice'
 import { useLoginMutation } from './authApi'
+import { useLabels } from '../../lib/useLabels'
 
 export default function LoginPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const [login, { isLoading }] = useLoginMutation()
+  const t = useLabels()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -16,7 +18,7 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!email || !password) {
-      setError('Please enter your email and password.')
+      setError(t.login.errorRequired)
       return
     }
     try {
@@ -24,7 +26,7 @@ export default function LoginPage() {
       dispatch(setCredentials({ user: result.user, token: result.token }))
       navigate('/acasa', { replace: true })
     } catch (err) {
-      setError(err?.data?.error ?? 'Login failed. Please try again.')
+      setError(err?.data?.error ?? t.login.errorFailed)
     }
   }
 
@@ -33,7 +35,7 @@ export default function LoginPage() {
       <div className="card" style={{ width: '100%', maxWidth: 400 }}>
         <div style={{ marginBottom: 24, textAlign: 'center' }}>
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>Servio</h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>Sign in to your account</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>{t.login.tagline}</p>
         </div>
 
         {error && (
@@ -44,11 +46,11 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t.login.emailLabel}</label>
             <input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t.login.emailPlaceholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
@@ -56,11 +58,11 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">{t.login.passwordLabel}</label>
             <input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder={t.login.passwordPlaceholder}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -68,7 +70,7 @@ export default function LoginPage() {
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ marginTop: 4 }} disabled={isLoading}>
-            {isLoading ? 'Signing in…' : 'Sign in'}
+            {isLoading ? t.login.signingIn : t.login.signIn}
           </button>
         </form>
       </div>

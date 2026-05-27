@@ -1,14 +1,16 @@
 import { useState } from 'react'
+import { useLabels } from '../../lib/useLabels'
 import MySessionsPanel from '../catalogue/MySessionsPanel'
 import AccountSettingsTab from './AccountSettingsTab'
 
-const TABS = [
-  { id: 'sessions', label: 'Sesiunile mele' },
-  { id: 'settings', label: 'Setări cont' },
-]
-
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState('sessions')
+  const t = useLabels()
+
+  const TABS = [
+    { id: 'sessions', label: t.clientDashboard.tabs.sessions },
+    { id: 'settings', label: t.clientDashboard.tabs.settings },
+  ]
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useGetMySessionsAsConsultantQuery } from './dashboardApi'
+import { useLabels } from '../../lib/useLabels'
 
 function fmtDateTime(iso) {
   return new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -13,17 +14,10 @@ const STATUS_BADGE = {
   cancelled: 'badge status-cancelled',
 }
 
-const STATUS_LABEL = {
-  pending: 'Awaiting payment',
-  pending_confirmation: 'Pending confirmation',
-  confirmed: 'Confirmed',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-}
-
 export default function OverviewTab({ consultantName }) {
   const { data } = useGetMySessionsAsConsultantQuery()
   const navigate = useNavigate()
+  const t = useLabels()
   const allSessions = data?.data ?? []
 
   const now = new Date()
@@ -41,24 +35,24 @@ export default function OverviewTab({ consultantName }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div className="card" style={{ background: 'var(--blue-bg)', border: '1px solid #bfdbfe' }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>
-          Welcome back, {consultantName ?? '—'}.
+          {t.overview.welcomeBack(consultantName ?? '—')}
         </h2>
         <p style={{ color: 'var(--primary)', fontSize: 13, marginTop: 4, opacity: 0.8 }}>
-          Here's a summary of your activity.
+          {t.overview.activitySummary}
         </p>
       </div>
 
       <div className="kpi-grid">
-        <KPICard label="Upcoming sessions" value={upcoming.length} />
-        <KPICard label="Pending confirmation" value={pending} accent />
-        <KPICard label="Completed this month" value={completedThisMonth} />
-        <KPICard label="Total sessions" value={allSessions.length} />
+        <KPICard label={t.overview.kpi.upcoming} value={upcoming.length} />
+        <KPICard label={t.overview.kpi.pendingConfirmation} value={pending} accent />
+        <KPICard label={t.overview.kpi.completedThisMonth} value={completedThisMonth} />
+        <KPICard label={t.overview.kpi.total} value={allSessions.length} />
       </div>
 
       <div className="card">
-        <h3 className="section-title">Upcoming Sessions</h3>
+        <h3 className="section-title">{t.overview.upcomingTitle}</h3>
         {upcoming.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No upcoming sessions.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t.overview.noUpcoming}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {upcoming.map((s) => (
@@ -68,8 +62,8 @@ export default function OverviewTab({ consultantName }) {
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{fmtDateTime(s.slot?.startTime)}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className={STATUS_BADGE[s.status]}>{STATUS_LABEL[s.status] ?? s.status}</span>
-                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/sessions/${s.id}`)}>See Details</button>
+                  <span className={STATUS_BADGE[s.status]}>{t.statusLabels[s.status] ?? s.status}</span>
+                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/sessions/${s.id}`)}>{t.overview.seeDetails}</button>
                 </div>
               </div>
             ))}

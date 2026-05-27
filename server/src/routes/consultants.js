@@ -448,9 +448,10 @@ router.patch('/:id', authenticate, authorize('admin'), async (req, res, next) =>
 })
 
 // POST /api/consultants/me/connect/onboard
-// Creates a Stripe Express account (if needed) and returns a hosted onboarding URL.
-// The consultant visits the URL to enter their bank details; Stripe handles KYC.
-// On return, Stripe sends an `account.updated` webhook to complete the flow.
+// Creates a Stripe Express account (if needed) and returns a hosted Stripe link.
+// - Not yet onboarded → account_onboarding link (enter bank details + KYC)
+// - Already onboarded → account_update link (update bank details / payout settings)
+// Always safe to call; Stripe links are single-use and expire after a few minutes.
 router.post('/me/connect/onboard', authenticate, authorize('consultant'), async (req, res, next) => {
   try {
     const profile = await prisma.consultantProfile.findUnique({
@@ -458,10 +459,6 @@ router.post('/me/connect/onboard', authenticate, authorize('consultant'), async 
       select: { id: true, stripeAccountId: true, stripeOnboardingComplete: true },
     })
     if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
-
-    if (profile.stripeOnboardingComplete) {
-      return res.status(400).json({ error: 'Stripe Connect onboarding already complete' })
-    }
 
     let accountId = profile.stripeAccountId
     if (!accountId) {
@@ -484,11 +481,12 @@ router.post('/me/connect/onboard', authenticate, authorize('consultant'), async 
       account: accountId,
       refresh_url: `${appUrl}/acasa?tab=contul-meu&connect=refresh`,
       return_url: `${appUrl}/acasa?tab=contul-meu&connect=success`,
-      type: 'account_onboarding',
+      type: profile.stripeOnboardingComplete ? 'account_update' : 'account_onboarding',
     })
 
     res.json({ url: accountLink.url })
   } catch (err) {
+    console.error('[connect/onboard] error:', err.message, err.type, err.code, err.param)
     next(err)
   }
 })

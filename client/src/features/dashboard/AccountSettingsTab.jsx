@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout, selectCurrentRole } from '../auth/authSlice'
+import { useLabels } from '../../lib/useLabels'
 import {
   useUpdateAccountSettingsMutation,
   useDeleteMyAccountMutation,
@@ -25,6 +26,7 @@ export default function AccountSettingsTab() {
 function FinanciarSection() {
   const { data, isLoading, refetch, isFetching } = useGetConnectStatusQuery()
   const [startOnboarding, { isLoading: isStarting }] = useStartConnectOnboardingMutation()
+  const t = useLabels()
 
   async function handleOnboard() {
     try {
@@ -65,6 +67,13 @@ function FinanciarSection() {
               </button>
             </div>
           )}
+          {data.onboardingComplete && (
+            <div>
+              <button className="btn btn-secondary btn-sm" onClick={handleOnboard} disabled={isStarting}>
+                {isStarting ? 'Se redirecționează…' : 'Actualizează datele bancare'}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -88,6 +97,7 @@ function ChangeEmailSection() {
   const [email, setEmail] = useState('')
   const [success, setSuccess] = useState(false)
   const [updateAccount, { isLoading, error }] = useUpdateAccountSettingsMutation()
+  const t = useLabels()
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -103,23 +113,23 @@ function ChangeEmailSection() {
 
   return (
     <div className="card">
-      <h3 className="section-title">Schimbă adresa de email</h3>
+      <h3 className="section-title">{t.accountSettings.changeEmail.title}</h3>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-group">
-          <label>Nouă adresă de email</label>
+          <label>{t.accountSettings.changeEmail.newEmail}</label>
           <input
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setSuccess(false) }}
-            placeholder="nou-email@exemplu.ro"
+            placeholder={t.accountSettings.changeEmail.placeholder}
             required
           />
         </div>
-        {error && <p style={{ fontSize: 13, color: 'var(--red)' }}>{error?.data?.error ?? 'A apărut o eroare.'}</p>}
-        {success && <p style={{ fontSize: 13, color: 'var(--green)' }}>✓ Adresa de email a fost actualizată.</p>}
+        {error && <p style={{ fontSize: 13, color: 'var(--red)' }}>{error?.data?.error ?? t.accountSettings.changeEmail.error}</p>}
+        {success && <p style={{ fontSize: 13, color: 'var(--green)' }}>{t.accountSettings.changeEmail.success}</p>}
         <div>
           <button type="submit" className="btn btn-primary" disabled={isLoading || !email}>
-            {isLoading ? 'Se salvează…' : 'Actualizează emailul'}
+            {isLoading ? t.accountSettings.changeEmail.saving : t.accountSettings.changeEmail.save}
           </button>
         </div>
       </form>
@@ -134,6 +144,7 @@ function ChangePasswordSection() {
   const [success, setSuccess] = useState(false)
   const [mismatch, setMismatch] = useState(false)
   const [updateAccount, { isLoading, error }] = useUpdateAccountSettingsMutation()
+  const t = useLabels()
 
   function handleChange(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -156,10 +167,10 @@ function ChangePasswordSection() {
 
   return (
     <div className="card">
-      <h3 className="section-title">Schimbă parola</h3>
+      <h3 className="section-title">{t.accountSettings.changePassword.title}</h3>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-group">
-          <label>Parolă nouă</label>
+          <label>{t.accountSettings.changePassword.newPassword}</label>
           <input
             type="password"
             value={form.password}
@@ -170,21 +181,21 @@ function ChangePasswordSection() {
           />
         </div>
         <div className="form-group">
-          <label>Confirmă parola nouă</label>
+          <label>{t.accountSettings.changePassword.confirmPassword}</label>
           <input
             type="password"
             value={form.confirm}
             onChange={(e) => handleChange('confirm', e.target.value)}
-            placeholder="Repetă parola"
+            placeholder="Repeţă parola"
             required
           />
         </div>
-        {mismatch && <p style={{ fontSize: 13, color: 'var(--red)' }}>Parolele nu coincid.</p>}
-        {error && <p style={{ fontSize: 13, color: 'var(--red)' }}>{error?.data?.error ?? 'A apărut o eroare.'}</p>}
-        {success && <p style={{ fontSize: 13, color: 'var(--green)' }}>✓ Parola a fost schimbată.</p>}
+        {mismatch && <p style={{ fontSize: 13, color: 'var(--red)' }}>{t.accountSettings.changePassword.mismatch}</p>}
+        {error && <p style={{ fontSize: 13, color: 'var(--red)' }}>{error?.data?.error ?? t.accountSettings.changePassword.error}</p>}
+        {success && <p style={{ fontSize: 13, color: 'var(--green)' }}>{t.accountSettings.changePassword.success}</p>}
         <div>
           <button type="submit" className="btn btn-primary" disabled={isLoading || !form.password || !form.confirm}>
-            {isLoading ? 'Se salvează…' : 'Schimbă parola'}
+            {isLoading ? t.accountSettings.changePassword.saving : t.accountSettings.changePassword.save}
           </button>
         </div>
       </form>
@@ -198,6 +209,7 @@ function DangerZoneSection() {
   const dispatch = useDispatch()
   const [confirming, setConfirming] = useState(false)
   const [deleteAccount, { isLoading, error }] = useDeleteMyAccountMutation()
+  const t = useLabels()
 
   async function handleDelete() {
     try {
@@ -210,26 +222,26 @@ function DangerZoneSection() {
 
   return (
     <div className="card" style={{ borderColor: 'var(--red)', borderWidth: 1 }}>
-      <h3 className="section-title" style={{ color: 'var(--red)' }}>Zonă periculoasă</h3>
+      <h3 className="section-title" style={{ color: 'var(--red)' }}>{t.accountSettings.dangerZone.title}</h3>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-        Ștergerea contului este permanentă și ireversibilă. Toate datele tale vor fi eliminate.
+        {t.accountSettings.dangerZone.confirmMessage}
       </p>
       {!confirming ? (
         <button className="btn btn-danger" onClick={() => setConfirming(true)}>
-          Șterge contul
+          {t.accountSettings.dangerZone.deleteAccount}
         </button>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)' }}>
-            Ești sigur? Această acțiune nu poate fi anulată.
+            {t.accountSettings.dangerZone.confirmMessage}
           </p>
-          {error && <p style={{ fontSize: 13, color: 'var(--red)' }}>{error?.data?.error ?? 'A apărut o eroare.'}</p>}
+          {error && <p style={{ fontSize: 13, color: 'var(--red)' }}>{error?.data?.error ?? t.accountSettings.changeEmail.error}</p>}
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn btn-danger" onClick={handleDelete} disabled={isLoading}>
-              {isLoading ? 'Se șterge…' : 'Da, șterge contul'}
+              {isLoading ? t.accountSettings.dangerZone.deleting : t.accountSettings.dangerZone.deleteAccount}
             </button>
             <button className="btn btn-secondary" onClick={() => setConfirming(false)}>
-              Anulează
+              {t.accountSettings.dangerZone.cancel}
             </button>
           </div>
         </div>

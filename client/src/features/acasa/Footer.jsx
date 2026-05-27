@@ -1,11 +1,14 @@
+import { useLabels } from '../../lib/useLabels'
+
 export default function Footer() {
+  const t = useLabels()
   return (
     <footer style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '40px 0 24px', marginTop: 'auto' }}>
       <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 32 }}>
         <div>
           <span style={{ fontWeight: 700, fontSize: 16 }}>Servio</span>
           <p style={{ color: 'var(--text-muted)', marginTop: 6, fontSize: 13, maxWidth: 260 }}>
-            Platforma ta de consultanță fiscală. Conectăm clienți cu consultanți verificați.
+            {t.footer.tagline}
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
             <SocialLink href="https://facebook.com" label="Facebook">
@@ -21,19 +24,19 @@ export default function Footer() {
         </div>
 
         <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap' }}>
-          <FooterCol title="Legal">
-            <FooterLink href="/legal/termeni">Termeni și condiții</FooterLink>
-            <FooterLink href="/legal/confidentialitate">Politica de confidențialitate</FooterLink>
+          <FooterCol title={t.footer.legalTitle}>
+            <FooterLink href="/legal/termeni">{t.footer.terms}</FooterLink>
+            <FooterLink href="/legal/confidentialitate">{t.footer.privacy}</FooterLink>
           </FooterCol>
-          <FooterCol title="Suport">
-            <FooterLink href="/contact">Contact</FooterLink>
-            <FooterLink href="/feedback">Trimite feedback</FooterLink>
+          <FooterCol title={t.footer.supportTitle}>
+            <FooterLink href="/contact">{t.footer.contact}</FooterLink>
+            <FooterLink href="/feedback">{t.footer.feedback}</FooterLink>
           </FooterCol>
         </div>
       </div>
 
       <div className="container" style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: 12 }}>
-        © {new Date().getFullYear()} Servio. Toate drepturile rezervate.
+        {t.footer.copyright(new Date().getFullYear())}
       </div>
     </footer>
   )

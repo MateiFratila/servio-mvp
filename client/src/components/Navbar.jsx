@@ -1,16 +1,24 @@
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, NavLink } from 'react-router-dom'
 import { logout, selectCurrentUser, selectCurrentRole } from '../features/auth/authSlice'
+import { setLanguage, selectLanguage } from '../features/lang/langSlice'
+import { useLabels } from '../lib/useLabels'
 
 export default function Navbar() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const user = useSelector(selectCurrentUser)
   const role = useSelector(selectCurrentRole)
+  const lang = useSelector(selectLanguage)
+  const t = useLabels()
 
   function handleLogout() {
     dispatch(logout())
     navigate('/login')
+  }
+
+  function toggleLanguage() {
+    dispatch(setLanguage(lang === 'ro' ? 'en' : 'ro'))
   }
 
   const linkStyle = ({ isActive }) => ({
@@ -28,17 +36,40 @@ export default function Navbar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <span style={{ fontWeight: 700, fontSize: 16 }}>Servio</span>
           <div style={{ display: 'flex', gap: 4 }}>
-            <NavLink to="/acasa" style={linkStyle}>Acasă</NavLink>
+            <NavLink to="/acasa" style={linkStyle}>{t.nav.home}</NavLink>
             {user && (
-              <NavLink to="/contul-meu" style={linkStyle}>Contul meu</NavLink>
+              <NavLink to="/contul-meu" style={linkStyle}>{t.nav.myAccount}</NavLink>
             )}
             {role === 'admin' && (
-              <NavLink to="/tools" style={linkStyle}>Tools</NavLink>
+              <NavLink to="/tools" style={linkStyle}>{t.nav.tools}</NavLink>
             )}
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={toggleLanguage}
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--text-muted)',
+              padding: '3px 8px',
+              letterSpacing: '0.04em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            aria-label="Toggle language"
+          >
+            <span style={{ color: lang === 'ro' ? 'var(--primary)' : 'var(--text-muted)' }}>RO</span>
+            <span style={{ opacity: 0.4 }}>|</span>
+            <span style={{ color: lang === 'en' ? 'var(--primary)' : 'var(--text-muted)' }}>EN</span>
+          </button>
+
           {user ? (
             <>
               <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
@@ -46,12 +77,12 @@ export default function Navbar() {
                 <span className="badge badge-grey" style={{ marginLeft: 8 }}>{role}</span>
               </span>
               <button className="btn btn-secondary btn-sm" onClick={handleLogout}>
-                Sign out
+                {t.nav.signOut}
               </button>
             </>
           ) : (
             <button className="btn btn-primary btn-sm" onClick={() => navigate('/login')}>
-              Sign in
+              {t.nav.signIn}
             </button>
           )}
         </div>

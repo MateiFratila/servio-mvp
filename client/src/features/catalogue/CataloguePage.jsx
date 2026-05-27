@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import ConsultantCard from './ConsultantCard'
 import { useGetConsultantsQuery } from './catalogueApi'
+import { useLabels } from '../../lib/useLabels'
 
 const SPECIALISATIONS = ['Tax Law', 'VAT Compliance', 'Payroll', 'Audit', 'Corporate Finance', 'Estate Planning']
 
 export default function CataloguePage() {
+  const t = useLabels()
   const [selectedSpecs, setSelectedSpecs] = useState([])
   const [maxRate, setMaxRate] = useState(300)
   const [availableOnly, setAvailableOnly] = useState(false)
@@ -41,9 +43,9 @@ export default function CataloguePage() {
       {/* Stat bar */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="container" style={{ display: 'flex', gap: 40, padding: '16px 24px' }}>
-          <Stat label="Available consultants" value={data?.total ?? '—'} />
-          <Stat label="Specialisations" value={SPECIALISATIONS.length} />
-          <Stat label="Avg. hourly rate" value={avgRate ? `€${avgRate}` : '—'} />
+          <Stat label={t.catalogue.stats.available} value={data?.total ?? '—'} />
+          <Stat label={t.catalogue.stats.specialisations} value={SPECIALISATIONS.length} />
+          <Stat label={t.catalogue.stats.avgRate} value={avgRate ? `€${avgRate}` : '—'} />
         </div>
       </div>
 
@@ -52,7 +54,7 @@ export default function CataloguePage() {
         <aside style={{ width: 220, flexShrink: 0 }}>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24 }}>
             <div>
-              <div style={{ fontWeight: 600, marginBottom: 10 }}>Specialisation</div>
+              <div style={{ fontWeight: 600, marginBottom: 10 }}>{t.catalogue.filters.specialisation}</div>
               {SPECIALISATIONS.map((s) => (
                 <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: 'pointer', fontSize: 13 }}>
                   <input
@@ -67,7 +69,7 @@ export default function CataloguePage() {
             </div>
 
             <div>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>Max rate: €{maxRate}</div>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>{t.catalogue.filters.maxRate(maxRate)}</div>
               <input
                 type="range"
                 min={0}
@@ -85,16 +87,16 @@ export default function CataloguePage() {
                 checked={availableOnly}
                 onChange={(e) => setAvailableOnly(e.target.checked)}
               />
-              Available today only
+              {t.catalogue.filters.availableToday}
             </label>
 
             <div className="form-group">
-              <label>Sort by</label>
+              <label>{t.catalogue.filters.sortBy}</label>
               <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="relevance">Relevance</option>
-                <option value="rate-asc">Rate (low → high)</option>
-                <option value="rate-desc">Rate (high → low)</option>
-                <option value="name">Name</option>
+                <option value="relevance">{t.catalogue.filters.sortOptions.relevance}</option>
+                <option value="rate-asc">{t.catalogue.filters.sortOptions.rateAsc}</option>
+                <option value="rate-desc">{t.catalogue.filters.sortOptions.rateDesc}</option>
+                <option value="name">{t.catalogue.filters.sortOptions.name}</option>
               </select>
             </div>
           </div>
@@ -103,7 +105,7 @@ export default function CataloguePage() {
         {/* Grid */}
         <div style={{ flex: 1 }}>
           {isLoading ? (
-            <p style={{ color: 'var(--text-muted)', marginTop: 32, textAlign: 'center' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', marginTop: 32, textAlign: 'center' }}>{t.sessionsTab.loading}</p>
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
@@ -113,7 +115,7 @@ export default function CataloguePage() {
               </div>
               {sorted.length === 0 && (
                 <p style={{ color: 'var(--text-muted)', marginTop: 32, textAlign: 'center' }}>
-                  No consultants match your filters.
+                  {t.catalogue.noResults}
                 </p>
               )}
             </>

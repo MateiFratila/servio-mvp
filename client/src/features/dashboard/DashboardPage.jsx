@@ -1,23 +1,25 @@
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
 import { selectCurrentUser } from '../../features/auth/authSlice'
+import { useLabels } from '../../lib/useLabels'
 import OverviewTab from './OverviewTab'
 import SessionsTab from './SessionsTab'
 import AvailabilityTab from './AvailabilityTab'
 import ProfileTab from './ProfileTab'
 import AccountSettingsTab from './AccountSettingsTab'
 
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'sessions', label: 'Sesiunile mele' },
-  { id: 'availability', label: 'Disponibilitate' },
-  { id: 'profile', label: 'Profilul meu' },
-  { id: 'settings', label: 'Setări cont' },
-]
-
 export default function DashboardPage() {
   const user = useSelector(selectCurrentUser)
   const [activeTab, setActiveTab] = useState('overview')
+  const t = useLabels()
+
+  const TABS = [
+    { id: 'overview', label: t.dashboard.tabs.overview },
+    { id: 'sessions', label: t.dashboard.tabs.sessions },
+    { id: 'availability', label: t.dashboard.tabs.availability },
+    { id: 'profile', label: t.dashboard.tabs.profile },
+    { id: 'settings', label: t.dashboard.tabs.settings },
+  ]
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

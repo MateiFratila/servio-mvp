@@ -2,33 +2,22 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CataloguePage from '../catalogue/CataloguePage'
 import Footer from './Footer'
-
-const SLIDES = [
-  {
-    id: 'consultant',
-    heading: 'Devino consultant',
-    sub: 'Oferă-ți expertiza fiscală și construiește-ți clientela pe Servio.',
-    cta: 'Află mai mult',
-    href: '/consultant',
-    bg: '#1e3a5f',
-  },
-  {
-    id: 'client',
-    heading: 'Găsește un consultant',
-    sub: 'Conectează-te cu cei mai buni consultanți fiscali în câțiva pași.',
-    cta: 'Caută acum',
-    href: '/client',
-    bg: '#1a4731',
-  },
-]
+import { useLabels } from '../../lib/useLabels'
 
 export default function AcasaPage() {
   const [active, setActive] = useState(0)
   const navigate = useNavigate()
-  const slide = SLIDES[active]
+  const t = useLabels()
+  const slides = t.acasa.slides.map((s, i) => ({
+    ...s,
+    id: i === 0 ? 'consultant' : 'client',
+    href: i === 0 ? '/consultant' : '/client',
+    bg: i === 0 ? '#1e3a5f' : '#1a4731',
+  }))
+  const slide = slides[active]
 
-  function prev() { setActive((active - 1 + SLIDES.length) % SLIDES.length) }
-  function next() { setActive((active + 1) % SLIDES.length) }
+  function prev() { setActive((active - 1 + slides.length) % slides.length) }
+  function next() { setActive((active + 1) % slides.length) }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -46,7 +35,7 @@ export default function AcasaPage() {
           </button>
           {/* Dots */}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            {SLIDES.map((_, i) => (
+            {slides.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setActive(i)}

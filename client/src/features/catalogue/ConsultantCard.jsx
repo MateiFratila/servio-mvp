@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useLabels } from '../../lib/useLabels'
 
 const STATUS_BADGE = {
   pending: 'badge status-pending',
@@ -9,6 +10,7 @@ const STATUS_BADGE = {
 
 export default function ConsultantCard({ consultant }) {
   const navigate = useNavigate()
+  const t = useLabels()
   const { id, displayName, specialisation, bio, hourlyRate } = consultant
   const avatarSrc = `/api/consultants/${id}/avatar`
 
@@ -34,9 +36,9 @@ export default function ConsultantCard({ consultant }) {
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-        <span style={{ fontWeight: 600, color: 'var(--text)' }}>€{hourlyRate} / hr</span>
+        <span style={{ fontWeight: 600, color: 'var(--text)' }}>€{hourlyRate} {t.consultantCard.perHour}</span>
         <button className="btn btn-primary btn-sm" onClick={() => navigate(`/catalog/${id}`)}>
-          View Profile
+          {t.consultantCard.viewProfile}
         </button>
       </div>
     </div>
