@@ -147,4 +147,156 @@ router.delete('/feedbacks/:id', async (req, res, next) => {
   }
 })
 
+// Helper function for slugification
+function slugify(text) {
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize('NFD') // split accented characters into components
+    .replace(/[\u0300-\u036f]/g, '') // remove diacritics
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-]/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '')
+}
+
+// GET /api/admin/suggestions — get both types of suggestions for vetting
+router.get('/suggestions', async (req, res, next) => {
+  try {
+    const specialisations = await prisma.suggestedSpecialisation.findMany({
+      orderBy: { createdAt: 'desc' },
+    })
+    const expertiseAreas = await prisma.suggestedExpertiseArea.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        specialisation: {
+          select: { name: true },
+        },
+      },
+    })
+    res.json({ specialisations, expertiseAreas })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/admin/suggestions/specialisations/:id/approve — approve a suggested specialisation
+router.post('/suggestions/specialisations/:id/approve', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID invalid' })
+    }
+
+    const suggestion = await prisma.suggestedSpecialisation.findUnique({
+      where: { id },
+    })
+
+    if (!suggestion) {
+      return res.status(404).json({ error: 'Sugestia de specializare nu a fost găsită.' })
+    }
+
+    const slug = slugify(suggestion.name)
+
+    // Insert to proper table and delete from temp table in a transaction
+    await prisma.$transaction([
+      prisma.specialisation.create({
+        data: {
+          name: suggestion.name,
+          slug,
+        },
+      }),
+      prisma.suggestedSpecialisation.delete({
+        where: { id },
+      }),
+    ])
+
+    res.json({ success: true, message: 'Specializarea a fost aprobată cu succes!' })
+  } catch (err) {
+    // if unique constraint or any other db error
+    if (err.code === 'P2002') {
+      return res.status(400).json({ error: 'Această specializare (sau slug-ul ei) există deja în baza de date.' })
+    }
+    next(err)
+  }
+})
+
+// POST /api/admin/suggestions/specialisations/:id/reject — reject/delete a suggested specialisation
+router.post('/suggestions/specialisations/:id/reject', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID invalid' })
+    }
+
+    await prisma.suggestedSpecialisation.delete({
+      where: { id },
+    })
+
+    res.json({ success: true, message: 'Sugestia a fost respinsă.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/admin/suggestions/expertise-areas/:id/approve — approve a suggested expertise area
+router.post('/suggestions/expertise-areas/:id/approve', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID invalid' })
+    }
+
+    const suggestion = await prisma.suggestedExpertiseArea.findUnique({
+      where: { id },
+    })
+
+    if (!suggestion) {
+      return res.status(404).json({ error: 'Sugestia de arie de expertiză nu a fost găsită.' })
+    }
+
+    const slug = slugify(suggestion.name)
+
+    await prisma.$transaction([
+      prisma.expertiseCategory.create({
+        data: {
+          name: suggestion.name,
+          slug,
+          specialisationId: suggestion.specialisationId,
+        },
+      }),
+      prisma.suggestedExpertiseArea.delete({
+        where: { id },
+      }),
+    ])
+
+    res.json({ success: true, message: 'Aria de expertiză a fost aprobată cu succes!' })
+  } catch (err) {
+    if (err.code === 'P2002') {
+      return res.status(400).json({ error: 'Această arie de expertiză (sau slug-ul ei) există deja în baza de date.' })
+    }
+    next(err)
+  }
+})
+
+// POST /api/admin/suggestions/expertise-areas/:id/reject — reject/delete a suggested expertise area
+router.post('/suggestions/expertise-areas/:id/reject', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID invalid' })
+    }
+
+    await prisma.suggestedExpertiseArea.delete({
+      where: { id },
+    })
+
+    res.json({ success: true, message: 'Sugestia a fost respinsă.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
 module.exports = router

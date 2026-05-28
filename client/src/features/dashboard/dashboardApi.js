@@ -57,6 +57,12 @@ export const dashboardApi = api.injectEndpoints({
       query: () => ({ url: '/consultants/me/connect/onboard', method: 'POST' }),
       invalidatesTags: ['ConnectStatus'],
     }),
+    suggestSpecialisation: build.mutation({
+      query: (body) => ({ url: '/consultants/suggest-specialisation', method: 'POST', body }),
+    }),
+    suggestExpertiseArea: build.mutation({
+      query: (body) => ({ url: '/consultants/suggest-expertise-area', method: 'POST', body }),
+    }),
   }),
 })
 
@@ -75,4 +81,6 @@ export const {
   useDeleteMyAccountMutation,
   useGetConnectStatusQuery,
   useStartConnectOnboardingMutation,
+  useSuggestSpecialisationMutation,
+  useSuggestExpertiseAreaMutation,
 } = dashboardApi

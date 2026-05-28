@@ -17,10 +17,39 @@ function isMissingStripeAccountError(err) {
 // Body: { consultantId, slotId, notes?, duration? }  duration: 1 (default) | 2 (hours)
 router.post('/create-intent', authenticate, async (req, res, next) => {
   try {
-    const { consultantId, slotId, notes, duration = 1 } = req.body
+    const { consultantId, slotId, notes, duration = 1, billingInfo } = req.body
     const durationMinutes = parseInt(duration) === 2 ? 120 : 60
     if (!consultantId || !slotId) {
       return res.status(400).json({ error: 'consultantId and slotId are required' })
+    }
+    if (!notes || typeof notes !== 'string' || notes.trim() === '') {
+      return res.status(400).json({ error: 'Descrierea problemei este obligatorie' })
+    }
+    if (!billingInfo || !billingInfo.billingType) {
+      return res.status(400).json({ error: 'Informațiile de facturare sunt obligatorii' })
+    }
+    if (billingInfo.billingType === 'fizica') {
+      if (!billingInfo.name || !billingInfo.localitate || !billingInfo.judet) {
+        return res.status(400).json({ error: 'Numele, localitatea și județul sunt obligatorii pentru persoana fizică' })
+      }
+    } else if (billingInfo.billingType === 'juridica') {
+      if (!billingInfo.companyName || !billingInfo.cui || !billingInfo.regCom || !billingInfo.companyAddress) {
+        return res.status(400).json({ error: 'Toate câmpurile companiei sunt obligatorii pentru persoana juridică' })
+      }
+    } else {
+      return res.status(400).json({ error: 'Tipul de facturare selectat este invalid' })
+    }
+
+    const billingData = {
+      billingType: billingInfo.billingType,
+      name: billingInfo.billingType === 'fizica' ? billingInfo.name : null,
+      cnp: billingInfo.billingType === 'fizica' ? billingInfo.cnp || null : null,
+      localitate: billingInfo.billingType === 'fizica' ? billingInfo.localitate : null,
+      judet: billingInfo.billingType === 'fizica' ? billingInfo.judet : null,
+      companyName: billingInfo.billingType === 'juridica' ? billingInfo.companyName : null,
+      cui: billingInfo.billingType === 'juridica' ? billingInfo.cui : null,
+      regCom: billingInfo.billingType === 'juridica' ? billingInfo.regCom : null,
+      companyAddress: billingInfo.billingType === 'juridica' ? billingInfo.companyAddress : null,
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -37,7 +66,35 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
       // If there's already an unpaid session belonging to this client, reuse it
       if (existingSession && existingSession.paymentStatus === 'unpaid' && existingSession.clientId === req.user.id) {
         const intent = await stripe.paymentIntents.retrieve(existingSession.stripePaymentIntentId)
-        return { clientSecret: intent.client_secret, sessionId: existingSession.id }
+
+        // Update the session's notes and duration, and upsert the billing info
+        await tx.session.update({
+          where: { id: existingSession.id },
+          data: {
+            notes: notes || null,
+            durationMinutes,
+            billing: {
+              upsert: {
+                create: billingData,
+                update: billingData,
+              }
+            }
+          }
+        })
+
+        // Also update Stripe payment intent if amount/duration changes
+        const profile = await tx.consultantProfile.findUnique({
+          where: { id: parseInt(consultantId) },
+          select: { hourlyRate: true },
+        })
+        const eurToRon = await getEurToRonRate()
+        const amountInBani = Math.round(Number(profile.hourlyRate) * (durationMinutes / 60) * eurToRon * 1.21 * 100)
+
+        const updatedIntent = await stripe.paymentIntents.update(existingSession.stripePaymentIntentId, {
+          amount: amountInBani
+        })
+
+        return { clientSecret: updatedIntent.client_secret, sessionId: existingSession.id }
       }
 
       // If there's a cancelled/failed session, delete it so we can start fresh
@@ -117,7 +174,7 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
       }
       const paymentIntent = await stripe.paymentIntents.create(intentParams)
 
-      // Create session row with unpaid status
+      // Create session row with unpaid status and its billing info
       const session = await tx.session.create({
         data: {
           clientId: req.user.id,
@@ -128,6 +185,9 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
           status: 'pending',
           paymentStatus: 'unpaid',
           stripePaymentIntentId: paymentIntent.id,
+          billing: {
+            create: billingData,
+          },
         },
       })
 

@@ -158,13 +158,27 @@ Publicly accessible — no authentication required. Also the first page reached 
 - Tags: specialisation areas (e.g. _Tax Law, VAT, Audit_)
 - Reviews placeholder: 4.8 ★ (12 reviews) _(out of scope for now)_
 
-**Booking Panel (right):**
-- Heading: _"Book a session"_
-- Calendar date picker to select a date
-- Available time slots for that date (list of pills): e.g. _09:00, 10:30, 14:00, 16:30_
-- Session notes textarea: placeholder _"Add any notes or agenda items for the consultant…"_
-- CTA button: **Confirm Booking**
-- Confirmation inline message on success: _"Your session has been booked. You'll find it under My Sessions."_
+**Booking Panel (right) — 3-Step Flow:**
+
+- **Step 1: Booking Mini-Form (embedded in panel)**
+  - Heading: _"Book a session"_
+  - Calendar date picker to select a date
+  - Duration selector: 1 hour vs 2 hours
+  - Available time slots for that date (list of pills) based on slot query response
+  - CTA button: **Next Step** (opens Step 2 Modal)
+
+- **Step 2: Billing & Information Modal (Full-width modal overlay)**
+  - **Billing Information Selector:** Choice between **Persoană Fizică (Individual)** and **Persoană Juridică (Company)**
+    - *Persoană Fizică fields:* Nume complet (required), CNP (optional), Județ (County - required dropdown selection), Localitate (City - required)
+    - *Persoană Juridică fields:* Denumire Companie (required), CUI (required), Reg. Comerțului (required), Adresă Sediu (required)
+  - **Describe the Problem Section:** Textarea renamed to "Describe the problem" (Descrieți problema) with inviting placeholder, now required (no longer optional).
+  - **Attachments Section:** Up to 5 files, 10 MB each (PDF, Word, Excel, images).
+  - CTA button: **Plata cu cardul** (validates entries, creates unpaid session and billing records in a separate database table, uploads attachment files, and transitions to Step 3)
+
+- **Step 3: Stripe Card Checkout (rendered in Modal)**
+  - Interactive Stripe Payment Element.
+  - CTA button: **Pay & Confirm**
+  - Confirmation inline message on success: _"Payment successful! Your session is confirmed. You'll find it under My Sessions."_
 
 ---
 

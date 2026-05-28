@@ -621,4 +621,95 @@ router.get('/me/connect/status', authenticate, authorize('consultant'), async (r
   }
 })
 
+// POST /api/consultants/suggest-specialisation — suggest a specialisation (authenticated)
+router.post('/suggest-specialisation', authenticate, async (req, res, next) => {
+  try {
+    const { name } = req.body
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Numele specializării este obligatoriu' })
+    }
+
+    const trimmedName = name.trim()
+
+    // Check if it already exists as an approved specialisation
+    const existingSpec = await prisma.specialisation.findFirst({
+      where: { name: { equals: trimmedName } },
+    })
+    if (existingSpec) {
+      return res.status(400).json({ error: 'Această specializare există deja.' })
+    }
+
+    // Check if already suggested and pending
+    const existingSuggestion = await prisma.suggestedSpecialisation.findFirst({
+      where: { name: { equals: trimmedName } },
+    })
+    if (existingSuggestion) {
+      return res.status(400).json({ error: 'Această specializare a fost sugerată deja și este în curs de verificare.' })
+    }
+
+    const suggestion = await prisma.suggestedSpecialisation.create({
+      data: {
+        name: trimmedName,
+        status: 'Pending',
+      },
+    })
+
+    res.json(suggestion)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/consultants/suggest-expertise-area — suggest an expertise area (authenticated)
+router.post('/suggest-expertise-area', authenticate, async (req, res, next) => {
+  try {
+    const { name, specialisationId } = req.body
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Numele ariei de expertiză este obligatoriu' })
+    }
+    if (!specialisationId) {
+      return res.status(400).json({ error: 'ID-ul specializării este obligatoriu' })
+    }
+
+    const trimmedName = name.trim()
+    const specId = parseInt(specialisationId, 10)
+
+    // Check if the parent specialisation exists
+    const parentSpec = await prisma.specialisation.findUnique({
+      where: { id: specId },
+    })
+    if (!parentSpec) {
+      return res.status(404).json({ error: 'Specializarea părinte nu a fost găsită.' })
+    }
+
+    // Check if it already exists in Approved categories
+    const existingCategory = await prisma.expertiseCategory.findFirst({
+      where: { name: { equals: trimmedName }, specialisationId: specId },
+    })
+    if (existingCategory) {
+      return res.status(400).json({ error: 'Această arie de expertiză există deja.' })
+    }
+
+    // Check if already suggested and pending for this specialisation
+    const existingSuggestion = await prisma.suggestedExpertiseArea.findFirst({
+      where: { name: { equals: trimmedName }, specialisationId: specId },
+    })
+    if (existingSuggestion) {
+      return res.status(400).json({ error: 'Această arie de expertiză a fost sugerată deja sub această specializare.' })
+    }
+
+    const suggestion = await prisma.suggestedExpertiseArea.create({
+      data: {
+        name: trimmedName,
+        specialisationId: specId,
+        status: 'Pending',
+      },
+    })
+
+    res.json(suggestion)
+  } catch (err) {
+    next(err)
+  }
+})
+
 module.exports = router

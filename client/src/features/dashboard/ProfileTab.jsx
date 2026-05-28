@@ -5,6 +5,8 @@ import {
   useUploadAvatarMutation,
   useUploadBannerMutation,
   useGetSpecialisationsQuery,
+  useSuggestSpecialisationMutation,
+  useSuggestExpertiseAreaMutation,
 } from './dashboardApi'
 
 const LANGUAGES = [
@@ -162,7 +164,15 @@ function MultiSelect({ options, selected, onChange, labelKey = 'label', valueKey
 
 // ── Specialisation picker ─────────────────────────────────────────────────
 
-function SpecialisationPicker({ specialisationIds, onChangeIds, categoryIds, onChangeCategoryIds, allSpecialisations }) {
+function SpecialisationPicker({
+  specialisationIds,
+  onChangeIds,
+  categoryIds,
+  onChangeCategoryIds,
+  allSpecialisations,
+  onSuggestSpecialisation,
+  onSuggestExpertiseArea,
+}) {
   function addSpecialisation() {
     const available = allSpecialisations.filter((s) => !specialisationIds.includes(s.id))
     if (available.length === 0) return
@@ -202,13 +212,19 @@ function SpecialisationPicker({ specialisationIds, onChangeIds, categoryIds, onC
             <div style={{ display: 'flex', gap: 8 }}>
               <select
                 value={specId}
-                onChange={(e) => changeSpecialisation(specId, Number(e.target.value))}
+                onChange={(e) => {
+                  if (e.target.value === 'suggest') {
+                    onSuggestSpecialisation()
+                  } else {
+                    changeSpecialisation(specId, Number(e.target.value))
+                  }
+                }}
                 style={{ flex: 1 }}
               >
                 {availableOptions.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
-                <option value="" disabled>— Sugerează o specializare</option>
+                <option value="suggest">— Sugerează o specializare…</option>
               </select>
               {specialisationIds.length > 1 && (
                 <button
@@ -251,8 +267,17 @@ function SpecialisationPicker({ specialisationIds, onChangeIds, categoryIds, onC
                   })}
                   <button
                     type="button"
-                    disabled
-                    style={{ padding: '3px 10px', borderRadius: 999, border: '1.5px dashed var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'not-allowed', opacity: 0.6 }}
+                    onClick={() => onSuggestExpertiseArea(spec.id)}
+                    style={{
+                      padding: '3px 12px',
+                      borderRadius: 999,
+                      border: '1.5px dashed var(--primary)',
+                      background: 'transparent',
+                      color: 'var(--primary)',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                    }}
                   >
                     + Sugerează o arie…
                   </button>
@@ -309,6 +334,138 @@ function HourlyRateTooltip() {
   )
 }
 
+// ── Suggestion Modals ──────────────────────────────────────────────────────
+
+function SuggestSpecialisationModal({ onClose }) {
+  const [name, setName] = useState('')
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(false)
+  const [suggestSpec, { isLoading: submitting }] = useSuggestSpecialisationMutation()
+
+  async function handleSuggest(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setError(null)
+    setSuccess(false)
+    try {
+      await suggestSpec({ name: name.trim() }).unwrap()
+      setSuccess(true)
+      setName('')
+    } catch (err) {
+      setError(err?.data?.error || 'A apărut o eroare la salvarea sugestiei.')
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: 'var(--surface)', padding: 24, borderRadius: 'var(--radius)', width: '100%', maxWidth: 450, boxShadow: 'var(--shadow-lg)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Sugerează o specializare</h3>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
+        </div>
+
+        {success ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ color: 'var(--green)', fontSize: 14 }}>
+              Sugestia ta a fost trimisă cu succes în statusul "Pending"! Un administrator o va verifica în cel mai scurt timp.
+            </p>
+            <button type="button" className="btn btn-primary" onClick={onClose}>Închide</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSuggest} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Nume specializare sugerată</label>
+              <input
+                required
+                placeholder="ex. Taxe Locale"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            {error && <p style={{ color: 'var(--danger)', fontSize: 13, margin: 0 }}>{error}</p>}
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>Renunță</button>
+              <button type="submit" className="btn btn-primary" disabled={submitting || !name.trim()}>
+                {submitting ? 'Se trimite…' : 'Trimite sugestia'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SuggestExpertiseAreaModal({ specialisationId, allSpecialisations, onClose }) {
+  const [name, setName] = useState('')
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(false)
+  const [suggestArea, { isLoading: submitting }] = useSuggestExpertiseAreaMutation()
+
+  const parentSpec = allSpecialisations.find(s => s.id === specialisationId)
+
+  async function handleSuggest(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setError(null)
+    setSuccess(false)
+    try {
+      await suggestArea({ name: name.trim(), specialisationId }).unwrap()
+      setSuccess(true)
+      setName('')
+    } catch (err) {
+      setError(err?.data?.error || 'A apărut o eroare la salvarea sugestiei.')
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: 'var(--surface)', padding: 24, borderRadius: 'var(--radius)', width: '100%', maxWidth: 450, boxShadow: 'var(--shadow-lg)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Sugerează o arie de expertiză</h3>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
+        </div>
+
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+          Sugerează o arie de expertiză pentru specializarea: <strong>{parentSpec?.name}</strong>
+        </p>
+
+        {success ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ color: 'var(--green)', fontSize: 14 }}>
+              Sugestia ta a fost trimisă cu succes în statusul "Pending"! Un administrator o va verifica în cel mai scurt timp.
+            </p>
+            <button type="button" className="btn btn-primary" onClick={onClose}>Închide</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSuggest} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Nume arie de expertiză sugerată</label>
+              <input
+                required
+                placeholder="ex. Taxarea criptomonedelor"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            {error && <p style={{ color: 'var(--danger)', fontSize: 13, margin: 0 }}>{error}</p>}
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>Renunță</button>
+              <button type="submit" className="btn btn-primary" disabled={submitting || !name.trim()}>
+                {submitting ? 'Se trimite…' : 'Trimite sugestia'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function ProfileTab() {
@@ -317,6 +474,10 @@ export default function ProfileTab() {
   const [updateProfile, { isLoading: saving }] = useUpdateMyProfileMutation()
   const [uploadAvatar, { isLoading: uploadingAvatar }] = useUploadAvatarMutation()
   const [uploadBanner, { isLoading: uploadingBanner }] = useUploadBannerMutation()
+
+  const [showSuggestSpec, setShowSuggestSpec] = useState(false)
+  const [showSuggestArea, setShowSuggestArea] = useState(false)
+  const [suggestAreaSpecId, setSuggestAreaSpecId] = useState(null)
 
   const profileData = me
   const [form, setForm] = useState(null)
@@ -418,6 +579,11 @@ export default function ProfileTab() {
               categoryIds={form.categoryIds}
               onChangeCategoryIds={(v) => handleChange('categoryIds', v)}
               allSpecialisations={allSpecialisations}
+              onSuggestSpecialisation={() => setShowSuggestSpec(true)}
+              onSuggestExpertiseArea={(specId) => {
+                setSuggestAreaSpecId(specId)
+                setShowSuggestArea(true)
+              }}
             />
           </div>
 
@@ -467,6 +633,21 @@ export default function ProfileTab() {
           </div>
         </form>
       </div>
+
+      {showSuggestSpec && (
+        <SuggestSpecialisationModal onClose={() => setShowSuggestSpec(false)} />
+      )}
+
+      {showSuggestArea && (
+        <SuggestExpertiseAreaModal
+          specialisationId={suggestAreaSpecId}
+          allSpecialisations={allSpecialisations}
+          onClose={() => {
+            setShowSuggestArea(false)
+            setSuggestAreaSpecId(null)
+          }}
+        />
+      )}
     </div>
   )
 }

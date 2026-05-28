@@ -34,6 +34,26 @@ export const toolsApi = api.injectEndpoints({
       query: ({ key, value }) => ({ url: `/admin/settings/${key}`, method: 'PATCH', body: { value } }),
       invalidatesTags: ['SystemSettings'],
     }),
+    getSuggestions: build.query({
+      query: () => '/admin/suggestions',
+      providesTags: ['Suggestions'],
+    }),
+    approveSpecialisationSuggestion: build.mutation({
+      query: (id) => ({ url: `/admin/suggestions/specialisations/${id}/approve`, method: 'POST' }),
+      invalidatesTags: ['Suggestions', 'Specialisation'],
+    }),
+    rejectSpecialisationSuggestion: build.mutation({
+      query: (id) => ({ url: `/admin/suggestions/specialisations/${id}/reject`, method: 'POST' }),
+      invalidatesTags: ['Suggestions'],
+    }),
+    approveExpertiseAreaSuggestion: build.mutation({
+      query: (id) => ({ url: `/admin/suggestions/expertise-areas/${id}/approve`, method: 'POST' }),
+      invalidatesTags: ['Suggestions', 'Specialisation'],
+    }),
+    rejectExpertiseAreaSuggestion: build.mutation({
+      query: (id) => ({ url: `/admin/suggestions/expertise-areas/${id}/reject`, method: 'POST' }),
+      invalidatesTags: ['Suggestions'],
+    }),
   }),
 })
 
@@ -46,4 +66,9 @@ export const {
   useUpdateUserRoleMutation,
   useGetSystemSettingsQuery,
   useUpdateSystemSettingMutation,
+  useGetSuggestionsQuery,
+  useApproveSpecialisationSuggestionMutation,
+  useRejectSpecialisationSuggestionMutation,
+  useApproveExpertiseAreaSuggestionMutation,
+  useRejectExpertiseAreaSuggestionMutation,
 } = toolsApi
