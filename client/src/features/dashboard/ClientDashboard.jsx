@@ -1,15 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useLabels } from '../../lib/useLabels'
 import MySessionsPanel from '../catalogue/MySessionsPanel'
 import AccountSettingsTab from './AccountSettingsTab'
+import FeedbackForm from '../../components/FeedbackForm'
 
 export default function ClientDashboard() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('sessions')
   const t = useLabels()
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['sessions', 'settings', 'contact'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   const TABS = [
     { id: 'sessions', label: t.clientDashboard.tabs.sessions },
     { id: 'settings', label: t.clientDashboard.tabs.settings },
+    { id: 'contact', label: 'Contactează-ne' },
   ]
 
   return (
@@ -33,6 +44,11 @@ export default function ClientDashboard() {
       <div className="container" style={{ flex: 1, paddingTop: 32, paddingBottom: 32 }}>
         {activeTab === 'sessions' && <ClientSessionsTab />}
         {activeTab === 'settings' && <AccountSettingsTab />}
+        {activeTab === 'contact' && (
+          <div style={{ padding: '8px 0' }}>
+            <FeedbackForm initialType="contact" />
+          </div>
+        )}
       </div>
     </div>
   )

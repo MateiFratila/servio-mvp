@@ -117,4 +117,34 @@ router.patch('/settings/:key', async (req, res, next) => {
   }
 })
 
+// GET /api/admin/feedbacks — admin only, get all feedbacks
+router.get('/feedbacks', async (_req, res, next) => {
+  try {
+    const feedbacks = await prisma.feedback.findMany({
+      orderBy: { createdAt: 'desc' },
+    })
+    res.json({ data: feedbacks, total: feedbacks.length })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// DELETE /api/admin/feedbacks/:id — admin only, delete feedback
+router.delete('/feedbacks/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID-ul feedback-ului este invalid' })
+    }
+
+    await prisma.feedback.delete({
+      where: { id },
+    })
+
+    res.json({ success: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
 module.exports = router

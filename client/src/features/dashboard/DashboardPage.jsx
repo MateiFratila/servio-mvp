@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSelector } from 'react-redux'
+import { useSearchParams } from 'react-router-dom'
 import { selectCurrentUser } from '../../features/auth/authSlice'
 import { useLabels } from '../../lib/useLabels'
 import OverviewTab from './OverviewTab'
@@ -7,11 +8,20 @@ import SessionsTab from './SessionsTab'
 import AvailabilityTab from './AvailabilityTab'
 import ProfileTab from './ProfileTab'
 import AccountSettingsTab from './AccountSettingsTab'
+import FeedbackForm from '../../components/FeedbackForm'
 
 export default function DashboardPage() {
   const user = useSelector(selectCurrentUser)
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('overview')
   const t = useLabels()
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['overview', 'sessions', 'availability', 'profile', 'settings', 'contact'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   const TABS = [
     { id: 'overview', label: t.dashboard.tabs.overview },
@@ -19,6 +29,7 @@ export default function DashboardPage() {
     { id: 'availability', label: t.dashboard.tabs.availability },
     { id: 'profile', label: t.dashboard.tabs.profile },
     { id: 'settings', label: t.dashboard.tabs.settings },
+    { id: 'contact', label: 'Contactează-ne' },
   ]
 
   return (
@@ -45,6 +56,11 @@ export default function DashboardPage() {
         {activeTab === 'availability' && <AvailabilityTab />}
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'settings' && <AccountSettingsTab />}
+        {activeTab === 'contact' && (
+          <div style={{ padding: '8px 0' }}>
+            <FeedbackForm initialType="contact" />
+          </div>
+        )}
       </div>
     </div>
   )

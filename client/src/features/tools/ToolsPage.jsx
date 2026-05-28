@@ -4,6 +4,7 @@ import ManageConsultantsTab from './ManageConsultantsTab'
 import AllSessionsTab from './AllSessionsTab'
 import UserManagementTab from './UserManagementTab'
 import SystemSettingsTab from './SystemSettingsTab'
+import FeedbacksTab from './FeedbacksTab'
 
 const TABS = [
   { id: 'overview', label: 'Platform Overview' },
@@ -11,6 +12,7 @@ const TABS = [
   { id: 'sessions', label: 'All Sessions' },
   { id: 'users', label: 'User Management' },
   { id: 'settings', label: 'System Settings' },
+  { id: 'feedbacks', label: 'Feedback & Contact' },
 ]
 
 export default function ToolsPage() {
@@ -40,6 +42,7 @@ export default function ToolsPage() {
       {activeTab === 'sessions' && <AllSessionsTab />}
       {activeTab === 'users' && <UserManagementTab />}
       {activeTab === 'settings' && <SystemSettingsTab />}
+      {activeTab === 'feedbacks' && <FeedbacksTab />}
     </div>
   )
 }

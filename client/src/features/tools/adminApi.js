@@ -6,7 +6,18 @@ export const adminApi = api.injectEndpoints({
       query: () => '/admin/stats',
       providesTags: ['User', 'Session', 'Consultant'],
     }),
+    getFeedbacks: build.query({
+      query: () => '/admin/feedbacks',
+      providesTags: ['Feedback'],
+    }),
+    deleteFeedback: build.mutation({
+      query: (id) => ({
+        url: `/admin/feedbacks/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Feedback'],
+    }),
   }),
 })
 
-export const { useGetAdminStatsQuery } = adminApi
+export const { useGetAdminStatsQuery, useGetFeedbacksQuery, useDeleteFeedbackMutation } = adminApi

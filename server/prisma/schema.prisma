@@ -218,3 +218,14 @@ model SessionDocument {
   @@index([sessionId])
   @@map("session_documents")
 }
+
+model Feedback {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  type      String   // "contact" or "feedback"
+  message   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("feedbacks")
+}

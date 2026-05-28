@@ -1,7 +1,11 @@
+import { useState } from 'react'
 import { useLabels } from '../../lib/useLabels'
+import FeedbackForm from '../../components/FeedbackForm'
 
 export default function Footer() {
   const t = useLabels()
+  const [modalType, setModalType] = useState(null) // 'contact', 'feedback', or null
+
   return (
     <footer style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '40px 0 24px', marginTop: 'auto' }}>
       <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 32 }}>
@@ -29,8 +33,42 @@ export default function Footer() {
             <FooterLink href="/legal/confidentialitate">{t.footer.privacy}</FooterLink>
           </FooterCol>
           <FooterCol title={t.footer.supportTitle}>
-            <FooterLink href="/contact">{t.footer.contact}</FooterLink>
-            <FooterLink href="/feedback">{t.footer.feedback}</FooterLink>
+            <button
+              onClick={() => setModalType('contact')}
+              style={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                textAlign: 'left',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: 'var(--text-muted)',
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+            >
+              {t.footer.contact}
+            </button>
+            <button
+              onClick={() => setModalType('feedback')}
+              style={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                textAlign: 'left',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: 'var(--text-muted)',
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+            >
+              {t.footer.feedback}
+            </button>
           </FooterCol>
         </div>
       </div>
@@ -38,6 +76,35 @@ export default function Footer() {
       <div className="container" style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: 12 }}>
         {t.footer.copyright(new Date().getFullYear())}
       </div>
+
+      {modalType && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{ position: 'relative', maxWidth: 600, width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button
+              onClick={() => setModalType(null)}
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 28,
+                background: 'none',
+                border: 'none',
+                fontSize: 24,
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                zIndex: 101,
+              }}
+              aria-label="Închide"
+            >
+              ×
+            </button>
+            <FeedbackForm initialType={modalType} />
+          </div>
+        </div>
+      )}
     </footer>
   )
 }

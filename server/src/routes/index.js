@@ -8,6 +8,7 @@ const documentsRouter = require('./documents')
 const messagesRouter = require('./messages')
 const adminRouter = require('./admin')
 const paymentsRouter = require('./payments')
+const feedbackRouter = require('./feedback')
 
 const router = Router()
 
@@ -20,6 +21,7 @@ router.use('/sessions/:sessionId/documents', documentsRouter)
 router.use('/sessions/:sessionId/messages', messagesRouter)
 router.use('/admin', adminRouter)
 router.use('/payments', paymentsRouter)
+router.use('/feedbacks', feedbackRouter)
 
 // Public config endpoint — safe to expose publishable key to the browser
 router.get('/config', async (_req, res) => {
