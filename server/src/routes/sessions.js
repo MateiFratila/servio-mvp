@@ -10,7 +10,15 @@ router.use(authenticate)
 
 const SESSION_INCLUDE = {
   client: { select: { id: true, email: true } },
-  consultant: { select: { id: true, displayName: true, specialisation: true } },
+  consultant: {
+    select: {
+      id: true,
+      displayName: true,
+      specialisations: {
+        select: { specialisation: { select: { id: true, name: true, slug: true } } },
+      },
+    },
+  },
   slot: { select: { id: true, startTime: true, endTime: true } },
 }
 

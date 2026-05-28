@@ -16,16 +16,17 @@ const STATUS_BADGE = {
 }
 
 export default function SessionsTab() {
-  const [statusFilter, setStatusFilter] = useState('All')
+  const ALL_FILTER = '__all__'
+  const [statusFilter, setStatusFilter] = useState(ALL_FILTER)
   const { data, isLoading, refetch, isFetching } = useGetMySessionsAsConsultantQuery()
   const [updateStatus] = useUpdateSessionStatusMutation()
   const navigate = useNavigate()
   const t = useLabels()
 
-  const STATUSES = [t.sessionsTab.filterAll, 'pending', 'pending_confirmation', 'confirmed', 'completed', 'cancelled']
+  const STATUSES = [ALL_FILTER, 'pending', 'pending_confirmation', 'confirmed', 'completed', 'cancelled']
 
   const allSessions = data?.data ?? []
-  const sessions = statusFilter === t.sessionsTab.filterAll ? allSessions : allSessions.filter((s) => s.status === statusFilter)
+  const sessions = statusFilter === ALL_FILTER ? allSessions : allSessions.filter((s) => s.status === statusFilter)
   const hasPendingRoom = allSessions.some((s) => (s.status === 'pending_confirmation' || s.status === 'confirmed') && !s.meetingUrl)
 
   return (
@@ -51,7 +52,7 @@ export default function SessionsTab() {
                 style={{ padding: '4px 12px', fontSize: 12 }}
                 onClick={() => setStatusFilter(s)}
               >
-                {s}
+                {s === ALL_FILTER ? t.sessionsTab.filterAll : (t.statusLabels[s] ?? s)}
               </button>
             ))}
           </div>

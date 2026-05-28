@@ -37,7 +37,9 @@ router.get('/me', async (req, res, next) => {
           select: {
             id: true,
             displayName: true,
-            specialisation: true,
+            specialisations: {
+              select: { specialisation: { select: { id: true, name: true, slug: true } } },
+            },
             hourlyRate: true,
             avatarUrl: true,
             isActive: true,

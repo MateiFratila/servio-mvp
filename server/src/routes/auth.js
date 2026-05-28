@@ -100,7 +100,6 @@ router.post('/register/consultant', async (req, res, next) => {
         profile: {
           create: {
             displayName: email.split('@')[0],
-            specialisation: '',
             hourlyRate: 0,
             isActive: false,
           },
