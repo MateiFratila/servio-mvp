@@ -3,6 +3,7 @@ const multer = require('multer')
 const prisma = require('../db')
 const { authenticate, authorize } = require('../middleware/authenticate')
 const { uploadBlob, getDownloadUrl } = require('../lib/azureStorage')
+const { sendPingPongMessage } = require('../emails')
 
 const router = Router({ mergeParams: true })
 
@@ -39,7 +40,10 @@ function runMulter(req, res) {
 async function resolveSession(sessionId, user) {
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { consultant: { select: { userId: true } } },
+    include: {
+      client: { select: { id: true, email: true } },
+      consultant: { select: { userId: true, displayName: true, user: { select: { email: true } } } },
+    },
   })
   if (!session) return null
   if (user.role === 'admin') return session
@@ -130,6 +134,29 @@ router.post('/', authorize('consultant', 'admin', 'client'), async (req, res, ne
     })
 
     res.status(201).json(message)
+
+    // Notify the counterpart — fire-and-forget, must not block the response
+    try {
+      const appUrl = process.env.APP_URL || 'http://localhost:5173'
+      const bookingUrl = `${appUrl}/sessions/${sessionId}`
+      const eventType = content && req.file ? 'message_with_document' : req.file ? 'document' : 'message'
+
+      const senderRole = req.user.role === 'consultant' ? 'consultant' : 'client'
+      const recipientEmail = senderRole === 'consultant'
+        ? session.client.email
+        : session.consultant.user.email
+      const recipientName = senderRole === 'consultant'
+        ? session.client.email
+        : session.consultant.displayName
+      const senderName = senderRole === 'consultant'
+        ? session.consultant.displayName
+        : session.client.email
+
+      sendPingPongMessage({ recipientEmail, recipientName, senderRole, senderName, eventType, bookingUrl })
+        .catch(err => console.error('[email] sendPingPongMessage failed for session', sessionId, err.message))
+    } catch (err) {
+      console.error('[email] sendPingPongMessage setup failed for session', sessionId, err.message)
+    }
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message })
     if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large (max 10 MB)' })

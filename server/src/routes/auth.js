@@ -2,6 +2,7 @@ const { Router } = require('express')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const prisma = require('../db')
+const { subscribeToList, LIST_IDS } = require('../emails')
 
 const router = Router()
 
@@ -65,6 +66,11 @@ router.post('/register', async (req, res, next) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
     )
 
+    // Fire-and-forget: add to Brevo client list
+    subscribeToList(user.email, LIST_IDS.CLIENTS).catch(err =>
+      console.error('[brevo] subscribeToList (client) failed:', err.message)
+    )
+
     res.status(201).json({
       token,
       user: { id: user.id, email: user.email, role: user.role },
@@ -106,6 +112,11 @@ router.post('/register/consultant', async (req, res, next) => {
         },
       },
     })
+
+    // Fire-and-forget: add to Brevo consultant list
+    subscribeToList(user.email, LIST_IDS.CONSULTANTS).catch(err =>
+      console.error('[brevo] subscribeToList (consultant) failed:', err.message)
+    )
 
     res.status(201).json({
       message: 'Cererea ta a fost înregistrată. Echipa noastră o va revizui și te vom contacta în curând.',

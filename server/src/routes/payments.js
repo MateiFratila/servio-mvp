@@ -194,7 +194,7 @@ router.post('/webhook', async (req, res) => {
 
       try {
         const appUrl = process.env.APP_URL || 'http://localhost:5173'
-        const bookingUrl = ` `
+        const bookingUrl = `${appUrl}/sessions/${session.id}`
         const startTime = new Date(session.slot.startTime)
         const sessionDate = startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })
         const sessionTime = startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })

@@ -2,6 +2,7 @@ const { Router } = require('express')
 const prisma = require('../db')
 const { authenticate, authorize } = require('../middleware/authenticate')
 const { createMeetingToken, createRoom } = require('../lib/daily')
+const { sendBookingConfirmed, sendBookingCancelled } = require('../emails')
 
 const router = Router()
 
@@ -14,6 +15,7 @@ const SESSION_INCLUDE = {
     select: {
       id: true,
       displayName: true,
+      user: { select: { email: true } },
       specialisations: {
         select: { specialisation: { select: { id: true, name: true, slug: true } } },
       },
@@ -192,6 +194,25 @@ router.patch('/:id', authorize('consultant', 'admin'), async (req, res, next) =>
       data: updateData,
       include: SESSION_INCLUDE,
     })
+
+    // Send email when consultant confirms
+    if (status === 'confirmed') {
+      try {
+        const appUrl = process.env.APP_URL || 'http://localhost:5173'
+        const startTime = new Date(updated.slot.startTime)
+        await sendBookingConfirmed({
+          clientEmail: updated.client.email,
+          clientName: updated.client.email,
+          consultantName: updated.consultant.displayName,
+          sessionDate: startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' }),
+          sessionTime: startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
+          bookingUrl: `${appUrl}/sessions/${updated.id}`,
+        })
+      } catch (err) {
+        console.error('[email] sendBookingConfirmed failed for session', id, err.message)
+      }
+    }
+
     res.json(updated)
   } catch (err) {
     next(err)
@@ -239,7 +260,10 @@ router.delete('/:id', async (req, res, next) => {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const existing = await prisma.session.findUnique({ where: { id } })
+    const existing = await prisma.session.findUnique({
+      where: { id },
+      include: SESSION_INCLUDE,
+    })
     if (!existing) return res.status(404).json({ error: 'Session not found' })
 
     if (req.user.role === 'client' && existing.clientId !== req.user.id) {
@@ -269,6 +293,42 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     await prisma.$transaction(cancelOps)
+
+    // Notify both parties of the cancellation — only if the session was paid
+    if (existing.paymentStatus === 'paid') {
+      const startTime = new Date(existing.slot.startTime)
+      const sessionDate = startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })
+      const sessionTime = startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
+      const refunded = true
+
+      try {
+        await sendBookingCancelled({
+          recipientEmail: existing.client.email,
+          recipientName: existing.client.email,
+          otherPartyName: existing.consultant.displayName,
+          sessionDate,
+          sessionTime,
+          refunded,
+        })
+      } catch (err) {
+        console.error('[email] sendBookingCancelled (client) failed for session', id, err.message)
+      }
+
+      if (existing.consultant.user?.email) {
+        try {
+          await sendBookingCancelled({
+            recipientEmail: existing.consultant.user.email,
+            recipientName: existing.consultant.displayName,
+            otherPartyName: existing.client.email,
+            sessionDate,
+            sessionTime,
+            refunded: false,
+          })
+        } catch (err) {
+          console.error('[email] sendBookingCancelled (consultant) failed for session', id, err.message)
+        }
+      }
+    }
 
     res.status(204).end()
   } catch (err) {

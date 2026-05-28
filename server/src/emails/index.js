@@ -5,10 +5,17 @@ const bookingConfirmed = require('./templates/bookingConfirmed')
 const bookingCancelled = require('./templates/bookingCancelled')
 const sessionReminder = require('./templates/sessionReminder')
 const reviewRequest = require('./templates/reviewRequest')
+const pingPongMessage = require('./templates/pingPongMessage')
 
 const DEFAULT_SENDER = {
   name: process.env.EMAIL_SENDER_NAME || 'Servio',
   email: process.env.EMAIL_SENDER_ADDRESS || 'office@servio.ro',
+}
+
+// Brevo list IDs
+const LIST_IDS = {
+  CLIENTS: 60,      // "Conturi Clienti"
+  CONSULTANTS: 61,  // "Conturi Consultanți"
 }
 
 /**
@@ -22,6 +29,23 @@ async function sendEmail({ to, toName, subject, htmlContent }) {
     to: [{ email: to, name: toName }],
     subject,
     htmlContent,
+  })
+}
+
+/**
+ * Add (or update) a contact in Brevo and subscribe them to a list.
+ * Uses updateEnabled so the call is idempotent.
+ *
+ * @param {string} email
+ * @param {number} listId  - one of LIST_IDS values
+ * @param {Record<string,string>} [attributes] - optional Brevo contact attributes
+ */
+async function subscribeToList(email, listId, attributes = {}) {
+  await brevo.contacts.createContact({
+    email,
+    listIds: [listId],
+    updateEnabled: true,
+    ...(Object.keys(attributes).length ? { attributes } : {}),
   })
 }
 
@@ -54,11 +78,29 @@ async function sendReviewRequest({ clientEmail, clientName, consultantName, sess
   await sendEmail({ to: clientEmail, toName: clientName, subject, htmlContent })
 }
 
+/**
+ * @param {{
+ *   recipientEmail: string,
+ *   recipientName: string,
+ *   senderRole: 'consultant' | 'client',
+ *   senderName: string,
+ *   eventType: 'message' | 'document' | 'message_with_document',
+ *   bookingUrl: string,
+ * }} params
+ */
+async function sendPingPongMessage({ recipientEmail, recipientName, senderRole, senderName, eventType, bookingUrl }) {
+  const { subject, htmlContent } = pingPongMessage({ recipientName, senderRole, senderName, eventType, bookingUrl })
+  await sendEmail({ to: recipientEmail, toName: recipientName, subject, htmlContent })
+}
+
 module.exports = {
   sendEmail,
+  subscribeToList,
+  LIST_IDS,
   sendBookingPendingConfirmation,
   sendBookingConfirmed,
   sendBookingCancelled,
   sendSessionReminder,
   sendReviewRequest,
+  sendPingPongMessage,
 }
