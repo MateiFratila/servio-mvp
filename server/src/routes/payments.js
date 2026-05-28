@@ -8,6 +8,10 @@ const { sendBookingPendingConfirmation } = require('../emails')
 
 const router = Router()
 
+function isMissingStripeAccountError(err) {
+  return err?.type === 'StripeInvalidRequestError' && err?.code === 'resource_missing' && err?.param === 'account'
+}
+
 // POST /api/payments/create-intent
 // Creates a PaymentIntent and a pending session row.
 // Body: { consultantId, slotId, notes?, duration? }  duration: 1 (default) | 2 (hours)
@@ -54,6 +58,28 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
       })
       if (!profile) return { error: 'Consultant not found', status: 404 }
 
+      let destinationAccountId = null
+      if (profile.stripeAccountId && profile.stripeOnboardingComplete) {
+        try {
+          const account = await stripe.accounts.retrieve(profile.stripeAccountId)
+          if (account.details_submitted) {
+            destinationAccountId = account.id
+          } else {
+            await tx.consultantProfile.update({
+              where: { id: profile.id },
+              data: { stripeOnboardingComplete: false },
+            })
+          }
+        } catch (stripeErr) {
+          if (!isMissingStripeAccountError(stripeErr)) throw stripeErr
+
+          await tx.consultantProfile.update({
+            where: { id: profile.id },
+            data: { stripeAccountId: null, stripeOnboardingComplete: false },
+          })
+        }
+      }
+
       // Reserve primary slot
       await tx.availabilitySlot.update({ where: { id: slot.id }, data: { isBooked: true } })
 
@@ -84,9 +110,9 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
           clientId: String(req.user.id),
         },
       }
-      if (profile.stripeAccountId && profile.stripeOnboardingComplete) {
+      if (destinationAccountId) {
         const feePct = Number(profile.platformFeePct)
-        intentParams.transfer_data = { destination: profile.stripeAccountId }
+        intentParams.transfer_data = { destination: destinationAccountId }
         intentParams.application_fee_amount = Math.round(amountInBani * feePct / 100)
       }
       const paymentIntent = await stripe.paymentIntents.create(intentParams)

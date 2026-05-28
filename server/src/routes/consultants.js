@@ -7,6 +7,26 @@ const { uploadBlob, streamBlob, deleteBlob } = require('../lib/azureStorage')
 
 const router = Router()
 
+function isMissingStripeAccountError(err) {
+  return err?.type === 'StripeInvalidRequestError' && err?.code === 'resource_missing' && err?.param === 'account'
+}
+
+async function createExpressConnectAccount(profileId, email) {
+  const account = await stripe.accounts.create({
+    type: 'express',
+    email,
+    capabilities: { transfers: { requested: true } },
+    business_type: 'individual',
+  })
+
+  await prisma.consultantProfile.update({
+    where: { id: profileId },
+    data: { stripeAccountId: account.id, stripeOnboardingComplete: false },
+  })
+
+  return account
+}
+
 // Multer: memory storage, 5 MB limit, images only
 const IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const uploadImage = multer({
@@ -497,27 +517,30 @@ router.post('/me/connect/onboard', authenticate, authorize('consultant'), async 
     })
     if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
 
-    let accountId = profile.stripeAccountId
-    if (!accountId) {
-      const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } })
-      const account = await stripe.accounts.create({
-        type: 'express',
-        email: user.email,
-        capabilities: { transfers: { requested: true } },
-        business_type: 'individual',
-      })
-      accountId = account.id
-      await prisma.consultantProfile.update({
-        where: { id: profile.id },
-        data: { stripeAccountId: accountId },
-      })
+    const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } })
+
+    let stripeAccount = null
+    if (profile.stripeAccountId) {
+      try {
+        stripeAccount = await stripe.accounts.retrieve(profile.stripeAccountId)
+      } catch (stripeErr) {
+        if (!isMissingStripeAccountError(stripeErr)) throw stripeErr
+
+        await prisma.consultantProfile.update({
+          where: { id: profile.id },
+          data: { stripeAccountId: null, stripeOnboardingComplete: false },
+        })
+      }
     }
+
+    if (!stripeAccount) {
+      stripeAccount = await createExpressConnectAccount(profile.id, user.email)
+    }
+
+    const accountId = stripeAccount.id
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173'
 
-    // Ask Stripe directly for the current account state — don't trust the DB flag,
-    // since the self-heal check could have set it prematurely.
-    const stripeAccount = await stripe.accounts.retrieve(accountId)
     const linkType = stripeAccount.details_submitted ? 'account_update' : 'account_onboarding'
 
     // Sync DB if needed
@@ -562,26 +585,35 @@ router.get('/me/connect/status', authenticate, authorize('consultant'), async (r
     if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
 
     let onboardingComplete = profile.stripeOnboardingComplete
+    let stripeAccountId = profile.stripeAccountId
 
-    // If we have an account but haven't marked it complete yet, check live from Stripe
-    if (profile.stripeAccountId && !onboardingComplete) {
+    if (profile.stripeAccountId) {
       try {
         const account = await stripe.accounts.retrieve(profile.stripeAccountId)
-        if (account.details_submitted) {
-          onboardingComplete = true
+        if (account.details_submitted !== onboardingComplete) {
+          onboardingComplete = account.details_submitted
           await prisma.consultantProfile.update({
             where: { id: profile.id },
-            data: { stripeOnboardingComplete: true },
+            data: { stripeOnboardingComplete: onboardingComplete },
           })
         }
       } catch (stripeErr) {
-        // Non-fatal: return whatever we have in the DB
-        console.error('[connect] failed to retrieve Stripe account', stripeErr.message)
+        if (isMissingStripeAccountError(stripeErr)) {
+          stripeAccountId = null
+          onboardingComplete = false
+          await prisma.consultantProfile.update({
+            where: { id: profile.id },
+            data: { stripeAccountId: null, stripeOnboardingComplete: false },
+          })
+        } else {
+          // Non-fatal: return whatever we have in the DB
+          console.error('[connect] failed to retrieve Stripe account', stripeErr.message)
+        }
       }
     }
 
     res.json({
-      stripeAccountId: profile.stripeAccountId,
+      stripeAccountId,
       onboardingComplete,
     })
   } catch (err) {
