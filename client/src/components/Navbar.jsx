@@ -1,20 +1,28 @@
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, NavLink } from 'react-router-dom'
 import { logout, selectCurrentUser, selectCurrentRole } from '../features/auth/authSlice'
+import { useLogoutApiMutation } from '../features/auth/authApi'
 import { setLanguage, selectLanguage } from '../features/lang/langSlice'
 import { useLabels } from '../lib/useLabels'
 
 export default function Navbar() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const [logoutApi] = useLogoutApiMutation()
   const user = useSelector(selectCurrentUser)
   const role = useSelector(selectCurrentRole)
   const lang = useSelector(selectLanguage)
   const t = useLabels()
 
-  function handleLogout() {
-    dispatch(logout())
-    navigate('/login')
+  async function handleLogout() {
+    try {
+      await logoutApi().unwrap()
+    } catch (err) {
+      console.error('Logout API call failed:', err)
+    } finally {
+      dispatch(logout())
+      navigate('/login')
+    }
   }
 
   function toggleLanguage() {

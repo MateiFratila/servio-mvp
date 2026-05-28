@@ -1,3 +1,7 @@
+import { useEffect, useState } from 'react'
+import { useDispatch } from 'react-redux'
+import { useRefreshMutation } from './features/auth/authApi'
+import { setCredentials, setInitialized } from './features/auth/authSlice'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AuthGuard from './components/AuthGuard'
 import RoleGuard from './components/RoleGuard'
@@ -40,6 +44,42 @@ function ProtectedLayout({ children }) {
 }
 
 export default function App() {
+  const dispatch = useDispatch()
+  const [refresh] = useRefreshMutation()
+  const [isRefreshing, setIsRefreshing] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    const checkRefresh = async () => {
+      try {
+        const payload = await refresh().unwrap()
+        if (active) {
+          dispatch(setCredentials(payload))
+        }
+      } catch (err) {
+        if (active) {
+          dispatch(setInitialized())
+        }
+      } finally {
+        if (active) {
+          setIsRefreshing(false)
+        }
+      }
+    }
+    checkRefresh()
+    return () => {
+      active = false
+    }
+  }, [refresh, dispatch])
+
+  if (isRefreshing) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+        <p>Se încarcă...</p>
+      </div>
+    )
+  }
+
   return (
     <BrowserRouter>
       <Routes>
