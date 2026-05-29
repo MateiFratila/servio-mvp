@@ -22,6 +22,25 @@ const SESSION_INCLUDE = {
     },
   },
   slot: { select: { id: true, startTime: true, endTime: true } },
+  review: {
+    select: {
+      id: true,
+      rating: true,
+      testimonial: true,
+      privateNotes: true,
+      createdAt: true,
+    },
+  },
+}
+
+function sanitizeSession(session, userRole) {
+  if (!session) return session
+  if (session.review && userRole !== 'admin') {
+    const sanitizedReview = { ...session.review }
+    delete sanitizedReview.privateNotes
+    return { ...session, review: sanitizedReview }
+  }
+  return session
 }
 
 // GET /api/sessions — list sessions scoped by role
@@ -64,7 +83,8 @@ router.get('/', async (req, res, next) => {
       prisma.session.count({ where }),
     ])
 
-    res.json({ data: sessions, total, page: pageNum, pageSize })
+    const sanitizedSessions = sessions.map((s) => sanitizeSession(s, req.user.role))
+    res.json({ data: sanitizedSessions, total, page: pageNum, pageSize })
   } catch (err) {
     next(err)
   }
@@ -137,7 +157,7 @@ router.get('/:id', async (req, res, next) => {
       }
     }
 
-    res.json(session)
+    res.json(sanitizeSession(session, req.user.role))
   } catch (err) {
     next(err)
   }
@@ -331,6 +351,96 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     res.status(204).end()
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/sessions/:id/reviews (and /review) — Client submits a review for a session
+router.post(['/:id/reviews', '/:id/review'], authorize('client', 'consultant'), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+
+    const { rating, testimonial, privateNotes } = req.body
+
+    const parsedRating = parseInt(rating)
+    if (isNaN(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+      return res.status(400).json({ error: 'Rating-ul trebuie să fie un număr între 1 și 5.' })
+    }
+
+    if (!testimonial || typeof testimonial !== 'string' || !testimonial.trim()) {
+      return res.status(400).json({ error: 'Mărturia publică este obligatorie.' })
+    }
+
+    // Find session
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: {
+        slot: true,
+        review: true,
+      }
+    })
+
+    if (!session) return res.status(404).json({ error: 'Session not found' })
+
+    // Only the client (or consultant acting as client) booking the session can leave a review
+    if (session.clientId !== req.user.id) {
+      return res.status(403).json({ error: 'Doar persoana care a rezervat ședința poate lăsa o recenzie.' })
+    }
+
+    // Check if review already exists
+    if (session.review) {
+      return res.status(400).json({ error: 'Sesiunea are deja o recenzie înregistrată.' })
+    }
+
+    // Check conditions:
+    // This feedback form component should only render on screen if the current time (now()) is greater than the Session Start Time OR the Client already left a review for this session.
+    // So we validate that now() > slot.startTime (only check this if there was no review already left, which we just checked above anyway)
+    if (new Date() <= new Date(session.slot.startTime)) {
+      return res.status(400).json({ error: 'Nu poți lăsa o recenzie înainte de începerea ședinței.' })
+    }
+
+    // Use a transaction to perform create review, update session status, and average rating recalculation
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Create review
+      const review = await tx.review.create({
+        data: {
+          sessionId: id,
+          clientId: req.user.id,
+          consultantId: session.consultantId,
+          rating: parsedRating,
+          testimonial: testimonial.trim(),
+          privateNotes: privateNotes ? privateNotes.trim() : null,
+        }
+      })
+
+      // 2. "leaving a review should advance the Session status to completed"
+      await tx.session.update({
+        where: { id },
+        data: { status: 'completed' }
+      })
+
+      // 3. Recalculate average star rating for consultant
+      const allReviews = await tx.review.findMany({
+        where: { consultantId: session.consultantId },
+        select: { rating: true }
+      })
+
+      // Calculate new average
+      const ratingsCount = allReviews.length
+      const ratingSum = allReviews.reduce((sum, r) => sum + r.rating, 0)
+      const avg = ratingsCount > 0 ? (ratingSum / ratingsCount) : 0
+
+      await tx.consultantProfile.update({
+        where: { id: session.consultantId },
+        data: { averageRating: avg }
+      })
+
+      return review
+    })
+
+    res.status(201).json(result)
   } catch (err) {
     next(err)
   }

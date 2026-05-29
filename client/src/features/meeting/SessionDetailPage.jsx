@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useGetSessionQuery, useGetSessionDocumentsQuery, useCancelSessionMutation, useGetSessionMessagesQuery, useContactClientMutation } from '../catalogue/catalogueApi'
 import { useUpdateSessionStatusMutation } from '../dashboard/dashboardApi'
-import { selectCurrentToken, selectCurrentRole } from '../auth/authSlice'
+import { selectCurrentToken, selectCurrentRole, selectCurrentUser } from '../auth/authSlice'
 
 function ConfirmModal({ message, onConfirm, onClose, loading, confirmLabel = 'Confirm', confirmCls = 'btn btn-danger' }) {
   return (
@@ -143,6 +143,7 @@ export default function SessionDetailPage() {
   const [updateStatus, { isLoading: confirming }] = useUpdateSessionStatusMutation()
   const [contactClient, { isLoading: contacting }] = useContactClientMutation()
   const role = useSelector(selectCurrentRole)
+  const currentUser = useSelector(selectCurrentUser)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
@@ -216,6 +217,11 @@ export default function SessionDetailPage() {
     (session.status === 'pending_confirmation' || session.status === 'ping_pong')
   const canContactClient = (role === 'consultant' || role === 'admin' || role === 'client') &&
     (session.status === 'pending_confirmation' || session.status === 'ping_pong' || session.status === 'confirmed')
+
+  const isClientBooker = session?.clientId === currentUser?.id
+  const startPassed = session?.slot?.startTime ? (new Date() > new Date(session.slot.startTime)) : false
+  const hasReview = !!session?.review
+  const canLeaveReview = isClientBooker && (startPassed || hasReview)
 
   return (
     <div className="container" style={{ paddingTop: 32, paddingBottom: 48, maxWidth: 720 }}>
@@ -355,7 +361,7 @@ export default function SessionDetailPage() {
         </dl>
 
         {session.slot?.startTime && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
             <a
               href={buildGoogleCalendarUrl(session)}
               target="_blank"
@@ -381,6 +387,15 @@ export default function SessionDetailPage() {
               </svg>
               Apple Calendar
             </button>
+            {canLeaveReview && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => navigate(`/sessions/${session.id}/review`)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                ★ {session.review ? 'Vizualizează recenzia' : 'Lasă o Recenzie'}
+              </button>
+            )}
           </div>
         )}
       </div>

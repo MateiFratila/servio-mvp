@@ -57,6 +57,7 @@ const CONSULTANT_SELECT = {
   platformFeePct: true,
   stripeAccountId: true,
   stripeOnboardingComplete: true,
+  averageRating: true,
   specialisations: {
     select: { specialisation: { select: { id: true, name: true, slug: true } } },
   },

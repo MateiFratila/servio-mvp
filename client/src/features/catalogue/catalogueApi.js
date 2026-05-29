@@ -79,6 +79,17 @@ export const catalogueApi = api.injectEndpoints({
         { type: 'SessionMessage', id: sessionId },
       ],
     }),
+    submitReview: build.mutation({
+      query: ({ sessionId, rating, testimonial, privateNotes }) => ({
+        url: `/sessions/${sessionId}/reviews`,
+        method: 'POST',
+        body: { rating, testimonial, privateNotes },
+      }),
+      invalidatesTags: (_res, _err, { sessionId }) => [
+        { type: 'Session', id: sessionId },
+        'Consultant',
+      ],
+    }),
   }),
 })
 
@@ -98,4 +109,5 @@ export const {
   useDeleteDocumentMutation,
   useGetSessionMessagesQuery,
   useContactClientMutation,
+  useSubmitReviewMutation,
 } = catalogueApi

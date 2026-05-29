@@ -46,6 +46,7 @@ model User {
   sessions           Session[]          @relation("ClientSessions")
   uploadedDocuments  SessionDocument[]  @relation("DocumentUploader")
   sentMessages       SessionMessage[]   @relation("MessageAuthor")
+  reviews            Review[]           @relation("ClientReviews")
 
   @@map("users")
 }
@@ -65,6 +66,7 @@ model ConsultantProfile {
   stripeAccountId          String?  @map("stripe_account_id")
   stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
   platformFeePct           Decimal  @default(30) @map("platform_fee_pct") @db.Decimal(5, 2)
+  averageRating            Decimal  @default(0.00) @map("average_rating") @db.Decimal(3, 2)
   createdAt                DateTime @default(now()) @map("created_at")
   updatedAt                DateTime @updatedAt @map("updated_at")
 
@@ -74,6 +76,7 @@ model ConsultantProfile {
   expertiseCategories ConsultantProfileCategory[]
   specialisations    ConsultantProfileSpecialisation[]
   tags               ConsultantTag[]
+  reviews            Review[]                     @relation("ConsultantReviews")
 
   @@map("consultant_profiles")
 }
@@ -173,6 +176,7 @@ model Session {
   documents  SessionDocument[]
   messages   SessionMessage[]
   billing    SessionBilling?
+  review     Review?
 
   @@index([clientId])
   @@index([consultantId, status])
@@ -255,6 +259,25 @@ model Feedback {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("feedbacks")
+}
+
+model Review {
+  id           Int      @id @default(autoincrement())
+  sessionId    Int      @unique @map("session_id")
+  clientId     Int      @map("client_id")
+  consultantId Int      @map("consultant_id")
+  rating       Int
+  testimonial  String   @db.Text
+  privateNotes String?  @db.Text @map("private_notes")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  session    Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  client     User              @relation("ClientReviews", fields: [clientId], references: [id])
+  consultant ConsultantProfile @relation("ConsultantReviews", fields: [consultantId], references: [id])
+
+  @@index([clientId])
+  @@index([consultantId])
+  @@map("reviews")
 }
 
 model SuggestedSpecialisation {

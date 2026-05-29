@@ -14,6 +14,7 @@ import ConsultantDetail from './features/catalogue/ConsultantDetail'
 import ToolsPage from './features/tools/ToolsPage'
 import MeetingPage from './features/meeting/MeetingPage'
 import SessionDetailPage from './features/meeting/SessionDetailPage'
+import ReviewPage from './features/meeting/ReviewPage'
 import ConsultantLandingPage from './features/consultant/ConsultantLandingPage'
 import ConsultantRegisterPage from './features/consultant/ConsultantRegisterPage'
 import ClientLandingPage from './features/landing/ClientLandingPage'
@@ -140,6 +141,17 @@ export default function App() {
             <ProtectedLayout>
               <RoleGuard allowed={['client', 'consultant', 'admin']}>
                 <SessionDetailPage />
+              </RoleGuard>
+            </ProtectedLayout>
+          }
+        />
+
+        <Route
+          path="/sessions/:sessionId/review"
+          element={
+            <ProtectedLayout>
+              <RoleGuard allowed={['client', 'consultant', 'admin']}>
+                <ReviewPage />
               </RoleGuard>
             </ProtectedLayout>
           }
