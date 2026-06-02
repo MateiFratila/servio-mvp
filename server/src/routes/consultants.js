@@ -58,6 +58,7 @@ const CONSULTANT_SELECT = {
   stripeAccountId: true,
   stripeOnboardingComplete: true,
   averageRating: true,
+  _count: { select: { reviews: true } },
   specialisations: {
     select: { specialisation: { select: { id: true, name: true, slug: true } } },
   },
@@ -451,6 +452,37 @@ router.get('/:id/banner', async (req, res, next) => {
   }
 })
 
+// GET /api/consultants/:id/reviews — public reviews for a consultant profile
+router.get('/:id/reviews', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+
+    const reviews = await prisma.review.findMany({
+      where: { consultantId: id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        rating: true,
+        testimonial: true,
+        displayName: true,
+        createdAt: true,
+        session: {
+          select: { id: true, clientId: true },
+        },
+        replies: {
+          select: { id: true, index: true, content: true, authorId: true, createdAt: true },
+          orderBy: { index: 'asc' },
+        },
+      },
+    })
+
+    res.json(reviews)
+  } catch (err) {
+    next(err)
+  }
+})
+
 // GET /api/consultants/:id — single consultant profile
 router.get('/:id', optionalAuthenticate, async (req, res, next) => {
   try {
@@ -708,6 +740,43 @@ router.post('/suggest-expertise-area', authenticate, async (req, res, next) => {
     })
 
     res.json(suggestion)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/consultants/me/reviews — all reviews for the authenticated consultant, newest first
+router.get('/me/reviews', authenticate, authorize('consultant', 'admin'), async (req, res, next) => {
+  try {
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { userId: req.user.id },
+      select: { id: true },
+    })
+    if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
+
+    const reviews = await prisma.review.findMany({
+      where: { consultantId: profile.id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        rating: true,
+        testimonial: true,
+        displayName: true,
+        createdAt: true,
+        session: {
+          select: {
+            id: true,
+            clientId: true,
+          },
+        },
+        replies: {
+          select: { id: true, index: true, content: true, authorId: true, createdAt: true },
+          orderBy: { index: 'asc' },
+        },
+      },
+    })
+
+    res.json(reviews)
   } catch (err) {
     next(err)
   }

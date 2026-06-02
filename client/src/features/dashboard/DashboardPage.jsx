@@ -8,6 +8,7 @@ import SessionsTab from './SessionsTab'
 import AvailabilityTab from './AvailabilityTab'
 import ProfileTab from './ProfileTab'
 import AccountSettingsTab from './AccountSettingsTab'
+import ReviewsTab from './ReviewsTab'
 import FeedbackForm from '../../components/FeedbackForm'
 
 export default function DashboardPage() {
@@ -18,7 +19,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && ['overview', 'sessions', 'availability', 'profile', 'settings', 'contact'].includes(tabParam)) {
+    if (tabParam && ['overview', 'sessions', 'availability', 'profile', 'settings', 'reviews', 'contact'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [searchParams])
@@ -29,6 +30,7 @@ export default function DashboardPage() {
     { id: 'availability', label: t.dashboard.tabs.availability },
     { id: 'profile', label: t.dashboard.tabs.profile },
     { id: 'settings', label: t.dashboard.tabs.settings },
+    { id: 'reviews', label: 'Recenziile mele' },
     { id: 'contact', label: 'Contactează-ne' },
   ]
 
@@ -56,6 +58,7 @@ export default function DashboardPage() {
         {activeTab === 'availability' && <AvailabilityTab />}
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'settings' && <AccountSettingsTab />}
+        {activeTab === 'reviews' && <ReviewsTab />}
         {activeTab === 'contact' && (
           <div style={{ padding: '8px 0' }}>
             <FeedbackForm initialType="contact" />

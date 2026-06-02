@@ -14,6 +14,7 @@ const SESSION_INCLUDE = {
   consultant: {
     select: {
       id: true,
+      userId: true,
       displayName: true,
       user: { select: { email: true } },
       specialisations: {
@@ -27,8 +28,13 @@ const SESSION_INCLUDE = {
       id: true,
       rating: true,
       testimonial: true,
+      displayName: true,
       privateNotes: true,
       createdAt: true,
+      replies: {
+        select: { id: true, index: true, content: true, authorId: true, createdAt: true },
+        orderBy: { index: 'asc' },
+      },
     },
   },
 }
@@ -362,7 +368,7 @@ router.post(['/:id/reviews', '/:id/review'], authorize('client', 'consultant'), 
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const { rating, testimonial, privateNotes } = req.body
+    const { rating, testimonial, displayName, privateNotes } = req.body
 
     const parsedRating = parseInt(rating)
     if (isNaN(parsedRating) || parsedRating < 1 || parsedRating > 5) {
@@ -411,6 +417,7 @@ router.post(['/:id/reviews', '/:id/review'], authorize('client', 'consultant'), 
           consultantId: session.consultantId,
           rating: parsedRating,
           testimonial: testimonial.trim(),
+          displayName: displayName ? displayName.trim() : null,
           privateNotes: privateNotes ? privateNotes.trim() : null,
         }
       })
@@ -441,6 +448,56 @@ router.post(['/:id/reviews', '/:id/review'], authorize('client', 'consultant'), 
     })
 
     res.status(201).json(result)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/sessions/:id/reviews/reply — client, consultant or admin posts a reply to a review
+router.post('/:id/reviews/reply', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+
+    const { content } = req.body
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Content is required.' })
+    }
+
+    const session = await prisma.session.findUnique({
+      where: { id },
+      select: { clientId: true, consultantId: true, review: { select: { id: true } } },
+    })
+    if (!session) return res.status(404).json({ error: 'Session not found' })
+    if (!session.review) return res.status(404).json({ error: 'No review found for this session.' })
+
+    if (req.user.role === 'client') {
+      if (session.clientId !== req.user.id) {
+        return res.status(403).json({ error: 'Forbidden' })
+      }
+    } else if (req.user.role === 'consultant') {
+      const profile = await prisma.consultantProfile.findUnique({
+        where: { userId: req.user.id },
+        select: { id: true },
+      })
+      if (!profile || session.consultantId !== profile.id) {
+        return res.status(403).json({ error: 'Forbidden' })
+      }
+    }
+
+    const reply = await prisma.$transaction(async (tx) => {
+      const count = await tx.reviewReply.count({ where: { reviewId: session.review.id } })
+      return tx.reviewReply.create({
+        data: {
+          reviewId: session.review.id,
+          authorId: req.user.id,
+          index: count + 1,
+          content: content.trim(),
+        },
+      })
+    })
+
+    res.status(201).json(reply)
   } catch (err) {
     next(err)
   }

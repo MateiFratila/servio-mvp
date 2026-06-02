@@ -47,6 +47,7 @@ model User {
   uploadedDocuments  SessionDocument[]  @relation("DocumentUploader")
   sentMessages       SessionMessage[]   @relation("MessageAuthor")
   reviews            Review[]           @relation("ClientReviews")
+  reviewReplies      ReviewReply[]      @relation("ReviewReplies")
 
   @@map("users")
 }
@@ -268,16 +269,33 @@ model Review {
   consultantId Int      @map("consultant_id")
   rating       Int
   testimonial  String   @db.Text
+  displayName  String?  @map("display_name")
   privateNotes String?  @db.Text @map("private_notes")
   createdAt    DateTime @default(now()) @map("created_at")
 
   session    Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   client     User              @relation("ClientReviews", fields: [clientId], references: [id])
   consultant ConsultantProfile @relation("ConsultantReviews", fields: [consultantId], references: [id])
+  replies    ReviewReply[]
 
   @@index([clientId])
   @@index([consultantId])
   @@map("reviews")
+}
+
+model ReviewReply {
+  id        Int      @id @default(autoincrement())
+  reviewId  Int      @map("review_id")
+  authorId  Int      @map("author_id")
+  index     Int      @map("index")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author User   @relation("ReviewReplies", fields: [authorId], references: [id])
+
+  @@index([reviewId])
+  @@map("review_replies")
 }
 
 model SuggestedSpecialisation {

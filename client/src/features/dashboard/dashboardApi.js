@@ -63,6 +63,10 @@ export const dashboardApi = api.injectEndpoints({
     suggestExpertiseArea: build.mutation({
       query: (body) => ({ url: '/consultants/suggest-expertise-area', method: 'POST', body }),
     }),
+    getMyReviews: build.query({
+      query: () => '/consultants/me/reviews',
+      providesTags: ['Review'],
+    }),
   }),
 })
 
@@ -83,4 +87,5 @@ export const {
   useStartConnectOnboardingMutation,
   useSuggestSpecialisationMutation,
   useSuggestExpertiseAreaMutation,
+  useGetMyReviewsQuery,
 } = dashboardApi

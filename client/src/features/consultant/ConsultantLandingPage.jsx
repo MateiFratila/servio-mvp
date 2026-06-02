@@ -76,7 +76,7 @@ export default function ConsultantLandingPage() {
               boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
             }}
           >
-            Înregistrează-te ca consultant →
+            Înregistrează-te! →
           </button>
           <p style={{ marginTop: 14, fontSize: 13, opacity: 0.65 }}>Înregistrarea este gratuită. Platforma reținee un comision doar la sesiunile finalizate.</p>
         </div>
@@ -105,8 +105,34 @@ export default function ConsultantLandingPage() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* Video */}
       <section style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '72px 24px' }}>
+        <div className="container" style={{ maxWidth: 800 }}>
+          <h2 style={{ textAlign: 'center', fontSize: 26, fontWeight: 700, marginBottom: 8 }}>Vezi cum funcționează Servio</h2>
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: 40 }}>
+            Un tur rapid al platformei — de la înregistrare până la prima sesiune.
+          </p>
+          <div style={{
+            position: 'relative',
+            paddingBottom: '56.25%', /* 16:9 */
+            height: 0,
+            borderRadius: 12,
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          }}>
+            <iframe
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+              title="Prezentare Servio"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section style={{ padding: '72px 24px' }}>
         <div className="container" style={{ maxWidth: 800 }}>
           <h2 style={{ textAlign: 'center', fontSize: 26, fontWeight: 700, marginBottom: 8 }}>Cum funcționează?</h2>
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: 48 }}>Trei pași simpli și ești activ pe platformă.</p>

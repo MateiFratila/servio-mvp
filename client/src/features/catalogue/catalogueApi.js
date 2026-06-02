@@ -80,15 +80,27 @@ export const catalogueApi = api.injectEndpoints({
       ],
     }),
     submitReview: build.mutation({
-      query: ({ sessionId, rating, testimonial, privateNotes }) => ({
+      query: ({ sessionId, rating, testimonial, displayName, privateNotes }) => ({
         url: `/sessions/${sessionId}/reviews`,
         method: 'POST',
-        body: { rating, testimonial, privateNotes },
+        body: { rating, testimonial, displayName, privateNotes },
       }),
       invalidatesTags: (_res, _err, { sessionId }) => [
         { type: 'Session', id: sessionId },
         'Consultant',
       ],
+    }),
+    submitReviewReply: build.mutation({
+      query: ({ sessionId, content }) => ({
+        url: `/sessions/${sessionId}/reviews/reply`,
+        method: 'POST',
+        body: { content },
+      }),
+      invalidatesTags: (_res, _err, { sessionId }) => [{ type: 'Session', id: sessionId }],
+    }),
+    getConsultantReviews: build.query({
+      query: (id) => `/consultants/${id}/reviews`,
+      providesTags: (_res, _err, id) => [{ type: 'Consultant', id }],
     }),
   }),
 })
@@ -110,4 +122,6 @@ export const {
   useGetSessionMessagesQuery,
   useContactClientMutation,
   useSubmitReviewMutation,
+  useSubmitReviewReplyMutation,
+  useGetConsultantReviewsQuery,
 } = catalogueApi

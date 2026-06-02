@@ -1,19 +1,27 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useGetSessionQuery, useSubmitReviewMutation } from '../catalogue/catalogueApi'
+import { useSelector } from 'react-redux'
+import { selectCurrentUser } from '../auth/authSlice'
+import { useGetSessionQuery, useSubmitReviewMutation, useSubmitReviewReplyMutation } from '../catalogue/catalogueApi'
 
 export default function ReviewPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
+  const currentUser = useSelector(selectCurrentUser)
   const { data: session, isLoading, error } = useGetSessionQuery(sessionId)
   const [submitReview, { isLoading: submitting }] = useSubmitReviewMutation()
+  const [submitReviewReply, { isLoading: submittingReply }] = useSubmitReviewReplyMutation()
 
   const [rating, setRating] = useState(5)
   const [hoverRating, setHoverRating] = useState(0)
   const [testimonial, setTestimonial] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [privateNotes, setPrivateNotes] = useState('')
   const [formError, setFormError] = useState('')
   const [success, setSuccess] = useState('')
+  const [replyContent, setReplyContent] = useState('')
+  const [replyError, setReplyError] = useState('')
+  const [replySuccess, setReplySuccess] = useState('')
 
   if (isLoading) {
     return (
@@ -40,6 +48,10 @@ export default function ReviewPage() {
     return null
   }
 
+  const isSessionClient = currentUser?.id === session?.clientId
+  const isSessionConsultant = currentUser?.id === session?.consultant?.userId
+  const canReply = currentUser?.role === 'admin' || isSessionClient || isSessionConsultant
+
   const handleRatingClick = (val) => {
     setRating(val)
   }
@@ -59,6 +71,7 @@ export default function ReviewPage() {
         sessionId: session.id,
         rating,
         testimonial: testimonial.trim(),
+        displayName: displayName.trim() || undefined,
         privateNotes: privateNotes.trim() || undefined,
       }).unwrap()
 
@@ -118,6 +131,15 @@ export default function ReviewPage() {
                 </div>
               </div>
 
+              {session.review.displayName && (
+                <div>
+                  <strong style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Nume Afișat
+                  </strong>
+                  <span style={{ fontSize: 15 }}>{session.review.displayName}</span>
+                </div>
+              )}
+
               <div>
                 <strong style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
                   Mărturie publică
@@ -135,6 +157,90 @@ export default function ReviewPage() {
                   <p style={{ margin: 0, padding: 12, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--grey-bg)', fontSize: 14, whiteSpace: 'pre-wrap' }}>
                     {session.review.privateNotes}
                   </p>
+                </div>
+              )}
+
+              {/* Replies */}
+              {session.review.replies?.length > 0 && (
+                <div>
+                  <strong style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Răspunsuri
+                  </strong>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {session.review.replies.map((reply) => {
+                      let authorLabel
+                      if (reply.authorId === session.consultant?.userId) {
+                        authorLabel = session.consultant.displayName
+                      } else if (reply.authorId === session.clientId) {
+                        authorLabel = session.review.displayName || 'Anonim'
+                      } else {
+                        authorLabel = 'Anonim'
+                      }
+                      return (
+                        <div key={reply.id} style={{ padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--grey-bg)', fontSize: 14 }}>
+                          <span style={{ fontWeight: 600, marginRight: 6 }}>{authorLabel}:</span>
+                          <span style={{ whiteSpace: 'pre-wrap' }}>{reply.content}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Reply form — visible to the session's own client, consultant, and admins */}
+              {canReply && (
+                <div>
+                  <strong style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Adaugă un răspuns
+                  </strong>
+
+                  {replyError && (
+                    <div className="badge badge-red" style={{ display: 'block', marginBottom: 8, padding: '8px 12px', borderRadius: 'var(--radius)', textTransform: 'none', whiteSpace: 'normal', textAlign: 'left' }}>
+                      {replyError}
+                    </div>
+                  )}
+                  {replySuccess && (
+                    <div className="badge badge-green" style={{ display: 'block', marginBottom: 8, padding: '8px 12px', borderRadius: 'var(--radius)', textTransform: 'none', background: '#d4edda', color: '#155724', whiteSpace: 'normal', textAlign: 'left' }}>
+                      {replySuccess}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      placeholder="Scrie un răspuns..."
+                      value={replyContent}
+                      onChange={(e) => setReplyContent(e.target.value)}
+                      disabled={submittingReply}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px', fontSize: 14,
+                        border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                        background: 'var(--surface)', color: 'var(--text)',
+                      }}
+                    />
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={submittingReply}
+                      onClick={async () => {
+                        setReplyError('')
+                        setReplySuccess('')
+                        if (!replyContent.trim()) {
+                          setReplyError('Răspunsul nu poate fi gol.')
+                          return
+                        }
+                        try {
+                          await submitReviewReply({ sessionId: session.id, content: replyContent.trim() }).unwrap()
+                          setReplyContent('')
+                          setReplySuccess('Răspuns adăugat cu succes!')
+                        } catch (err) {
+                          setReplyError(err?.data?.error || 'A apărut o eroare. Încearcă din nou.')
+                        }
+                      }}
+                    >
+                      {submittingReply ? '...' : 'Trimite'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -185,6 +291,26 @@ export default function ReviewPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label htmlFor="displayName" style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>
+                  Nume Afișat <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opțional)</span>
+                </label>
+                <input
+                  id="displayName"
+                  type="text"
+                  placeholder="Ex: Andrei M., Anonimă, Maria din Cluj..."
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  disabled={submitting}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '10px 12px', fontSize: 14,
+                    border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                    background: 'var(--surface)', color: 'var(--text)',
+                  }}
+                />
               </div>
 
               <div className="form-group">
