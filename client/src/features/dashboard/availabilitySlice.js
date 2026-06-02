@@ -19,7 +19,7 @@ export const availabilitySlice = createSlice({
     // calls only syncs newly-booked cells so user edits are preserved.
     initGrid(state, action) {
       const incoming = action.payload // same shape as grid
-      if (!state.initialized) {
+      if (!state.initialized || state.saved) {
         state.grid = incoming
         state.initialized = true
         state.saved = true
@@ -68,6 +68,11 @@ export const availabilitySlice = createSlice({
     setMacroScope(state, action) {
       state.macroScope = action.payload
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase('auth/logout', () => {
+      return initialState
+    })
   },
 })
 

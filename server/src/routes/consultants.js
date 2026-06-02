@@ -355,24 +355,28 @@ router.put('/me/slots', authenticate, authorize('consultant', 'admin'), async (r
     const { slots } = req.body
     if (!Array.isArray(slots)) return res.status(400).json({ error: 'slots must be an array' })
 
+    const now = new Date()
+
     await prisma.$transaction([
       // Delete all unbooked future slots for this consultant
       prisma.availabilitySlot.deleteMany({
-        where: { consultantId: profile.id, isBooked: false, startTime: { gte: new Date() } },
+        where: { consultantId: profile.id, isBooked: false, startTime: { gte: now } },
       }),
-      // Recreate from the submitted list
+      // Recreate from the submitted list (only future slots)
       prisma.availabilitySlot.createMany({
-        data: slots.map(({ startTime, endTime }) => ({
-          consultantId: profile.id,
-          startTime: new Date(startTime),
-          endTime: new Date(endTime),
-          isBooked: false,
-        })),
+        data: slots
+          .filter(({ startTime }) => new Date(startTime) >= now)
+          .map(({ startTime, endTime }) => ({
+            consultantId: profile.id,
+            startTime: new Date(startTime),
+            endTime: new Date(endTime),
+            isBooked: false,
+          })),
       }),
     ])
 
     const updated = await prisma.availabilitySlot.findMany({
-      where: { consultantId: profile.id, startTime: { gte: new Date() } },
+      where: { consultantId: profile.id, startTime: { gte: now } },
       orderBy: { startTime: 'asc' },
     })
     res.json(updated)

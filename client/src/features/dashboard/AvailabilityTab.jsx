@@ -18,6 +18,7 @@ import {
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
 const SLOT_DURATION_MIN = 60
 const MAX_WEEKS = 13 // fiscal quarter (~3 months)
+const EMPTY_ARRAY = []
 
 // Slots covered by the "9–17" macro: 09:00 start (1hr) through 16:00 start (ends 17:00)
 const MACRO_917_SLOTS = TIME_SLOTS.filter((t) => parseInt(t, 10) < 17)
@@ -67,7 +68,7 @@ function fmtWeekRange(weekOffset) {
 export default function AvailabilityTab() {
   const L = useLabels().availabilityTab
   const dispatch = useDispatch()
-  const { data: serverSlots = [], isLoading } = useGetMySlotsQuery()
+  const { data: serverSlots = EMPTY_ARRAY, isLoading } = useGetMySlotsQuery()
   const [updateSlots, { isLoading: saving }] = useUpdateMySlotsMutation()
 
   const grid = useSelector(selectAvailabilityGrid)
@@ -120,18 +121,25 @@ export default function AvailabilityTab() {
 
   async function handleSave() {
     const slots = []
+    const now = new Date()
     for (const date of allDates) {
       const key = dateKey(date)
       for (const time of TIME_SLOTS) {
         if (grid[key]?.[time] === 'available') {
           const start = new Date(slotISO(date, time))
-          const end = new Date(start.getTime() + SLOT_DURATION_MIN * 60000)
-          slots.push({ startTime: start.toISOString(), endTime: end.toISOString() })
+          if (start >= now) {
+            const end = new Date(start.getTime() + SLOT_DURATION_MIN * 60000)
+            slots.push({ startTime: start.toISOString(), endTime: end.toISOString() })
+          }
         }
       }
     }
-    await updateSlots({ slots })
-    dispatch(markSaved())
+    try {
+      await updateSlots({ slots }).unwrap()
+      dispatch(markSaved())
+    } catch (err) {
+      console.error('Failed to save slots:', err)
+    }
   }
 
   function cellStyle(value) {
@@ -227,10 +235,11 @@ export default function AvailabilityTab() {
                   </td>
                   {TIME_SLOTS.map((time) => {
                     const val = grid[key]?.[time] ?? 'blocked'
+                    const slotPast = new Date(slotISO(date, time)) < new Date()
                     return (
                       <td
                         key={time}
-                        onClick={() => !isPast && toggle(key, time)}
+                        onClick={() => !slotPast && toggle(key, time)}
                         style={{
                           borderRadius: 6,
                           padding: '8px 12px',
@@ -241,7 +250,7 @@ export default function AvailabilityTab() {
                           userSelect: 'none',
                           border: 'none',
                           ...cellStyle(val),
-                          ...(isPast ? { cursor: 'default' } : {}),
+                          ...(slotPast ? { cursor: 'default', opacity: 0.45 } : {}),
                         }}
                       >
                         {val === 'booked' ? '●' : val === 'available' ? L.cellOpen : L.cellOff}
