@@ -46,6 +46,10 @@ export const LABELS = {
       perHour: '/ oră',
       plusVat: '+TVA',
     },
+    bookingPanel: {
+      unauthorizedMsg: 'Trebuie să fii conectat pentru a vedea intervalele disponibile.',
+      connectBtn: 'Conectează-te',
+    },
     statusLabels: {
       pending: 'Așteptare plată',
       pending_confirmation: 'Așteptare confirmare',
@@ -297,6 +301,10 @@ export const LABELS = {
       viewProfile: 'View Profile',
       perHour: '/ hr',
       plusVat: '+VAT',
+    },
+    bookingPanel: {
+      unauthorizedMsg: 'You must be logged in to view available times.',
+      connectBtn: 'Connect',
     },
     statusLabels: {
       pending: 'Awaiting payment',

@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react'
 import { useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { PaymentElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js'
 import stripePromise from '../../lib/stripe'
 import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation, useUploadDocumentMutation } from './catalogueApi'
 import { api } from '../../services/api'
+import { useLabels } from '../../lib/useLabels'
 
 const ROMANIAN_COUNTIES = [
   'Alba', 'Arad', 'Argeș', 'Bacău', 'Bihor', 'Bistrița-Năsăud', 'Botoșani', 'Brașov', 'Brăila', 'Buzău',
@@ -66,6 +68,8 @@ function PaymentForm({ clientSecret, onSuccess, onCancel }) {
 
 export default function BookingPanel({ consultantId, consultantName }) {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const t = useLabels()
   const fileInputRef = useRef(null)
   
   // Step 1 states
@@ -94,7 +98,7 @@ export default function BookingPanel({ consultantId, consultantName }) {
   const [intentError, setIntentError] = useState('')
   const [uploadError, setUploadError] = useState('')
 
-  const { data: slots = [], isFetching: slotsLoading } = useGetConsultantSlotsQuery(
+  const { data: slots = [], isFetching: slotsLoading, error } = useGetConsultantSlotsQuery(
     { consultantId, date: selectedDate, duration: selectedDuration },
     { skip: !selectedDate || !selectedDuration }
   )
@@ -272,35 +276,55 @@ export default function BookingPanel({ consultantId, consultantName }) {
         {/* Available slots / Availability request/response */}
         {selectedDate && selectedDuration && (
           <div>
-            <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>Available times</div>
-            {slotsLoading ? (
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading slots…</p>
-            ) : slots.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No available slots for this date and duration.</p>
-            ) : (
-              <div className="slot-grid">
-                {slots.map((slot) => (
-                  <button
-                    key={slot.id}
-                    className={`slot-pill${selectedSlotId === slot.id ? ' selected' : ''}`}
-                    onClick={() => setSelectedSlotId(slot.id)}
-                  >
-                    {fmtSlotLabel(slot, parseInt(selectedDuration))}
-                  </button>
-                ))}
+            {error?.status === 401 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+                  {t.bookingPanel?.unauthorizedMsg || 'Trebuie să fii conectat pentru a vedea intervalele disponibile.'}
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ width: '100%' }}
+                  onClick={() => navigate('/login')}
+                >
+                  {t.bookingPanel?.connectBtn || 'Conectează-te'}
+                </button>
               </div>
+            ) : (
+              <>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>Available times</div>
+                {slotsLoading ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading slots…</p>
+                ) : slots.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No available slots for this date and duration.</p>
+                ) : (
+                  <div className="slot-grid">
+                    {slots.map((slot) => (
+                      <button
+                        key={slot.id}
+                        className={`slot-pill${selectedSlotId === slot.id ? ' selected' : ''}`}
+                        onClick={() => setSelectedSlotId(slot.id)}
+                      >
+                        {fmtSlotLabel(slot, parseInt(selectedDuration))}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
 
-        <button
-          className="btn btn-primary"
-          style={{ marginTop: 8 }}
-          disabled={!selectedDate || !selectedDuration || !selectedSlotId}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Next Step
-        </button>
+        {error?.status !== 401 && (
+          <button
+            className="btn btn-primary"
+            style={{ marginTop: 8 }}
+            disabled={!selectedDate || !selectedDuration || !selectedSlotId}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Next Step
+          </button>
+        )}
       </div>
 
       {/* Step 2 & 3: Full-width Modal */}
