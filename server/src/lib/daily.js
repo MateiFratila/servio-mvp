@@ -23,6 +23,7 @@ async function createRoom({ name, exp }) {
         enable_screenshare: true,
         start_video_off: false,
         start_audio_off: false,
+        enable_recording: 'cloud',
       },
     }),
   })
@@ -37,10 +38,10 @@ async function createRoom({ name, exp }) {
 
 /**
  * Create a signed meeting token for a participant.
- * @param {{ roomName: string, userName: string, exp: number }} opts
+ * @param {{ roomName: string, userName: string, exp: number, isOwner?: boolean }} opts
  * @returns {Promise<{ token: string }>}
  */
-async function createMeetingToken({ roomName, userName, exp }) {
+async function createMeetingToken({ roomName, userName, exp, isOwner = false }) {
   const res = await fetch(`${DAILY_API}/meeting-tokens`, {
     method: 'POST',
     headers: {
@@ -52,7 +53,7 @@ async function createMeetingToken({ roomName, userName, exp }) {
         room_name: roomName,
         user_name: userName,
         exp: Math.floor(exp / 1000),
-        is_owner: false,
+        is_owner: isOwner,
       },
     }),
   })

@@ -272,6 +272,7 @@ router.get('/:id/meeting-token', async (req, res, next) => {
       roomName: session.dailyRoomName,
       userName,
       exp: expMs,
+      isOwner: isConsultant || req.user.role === 'admin',
     })
 
     res.json({ token })
