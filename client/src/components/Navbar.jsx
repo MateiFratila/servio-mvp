@@ -42,7 +42,7 @@ export default function Navbar() {
     <nav style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', height: 57 }}>
       <div className="container" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>Servio</span>
+          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVO</span>
           <div style={{ display: 'flex', gap: 4 }}>
             <NavLink to="/acasa" style={linkStyle}>{t.nav.home}</NavLink>
             {user && (

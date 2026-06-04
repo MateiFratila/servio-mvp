@@ -11,7 +11,7 @@ export const LABELS = {
       slides: [
         {
           heading: 'Devino consultant',
-          sub: 'Oferă-ți expertiza fiscală și construiește-ți clientela pe Servio.',
+          sub: 'Oferă-ți expertiza fiscală și construiește-ți clientela pe SERVO.',
           cta: 'Află mai mult',
         },
         {
@@ -206,7 +206,7 @@ export const LABELS = {
       supportTitle: 'Suport',
       contact: 'Contact',
       feedback: 'Trimite feedback',
-      copyright: (year) => `© ${year} Servio. Toate drepturile rezervate.`,
+      copyright: (year) => `© ${year} SERVO. Toate drepturile rezervate.`,
     },
     profileTab: {
       avatarLabel: 'Avatar',
@@ -269,7 +269,7 @@ export const LABELS = {
       slides: [
         {
           heading: 'Become a consultant',
-          sub: 'Share your tax expertise and build your client base on Servio.',
+          sub: 'Share your tax expertise and build your client base on SERVO.',
           cta: 'Learn more',
         },
         {
@@ -464,7 +464,7 @@ export const LABELS = {
       supportTitle: 'Support',
       contact: 'Contact',
       feedback: 'Send feedback',
-      copyright: (year) => `© ${year} Servio. All rights reserved.`,
+      copyright: (year) => `© ${year} SERVO. All rights reserved.`,
     },
     profileTab: {
       avatarLabel: 'Avatar',

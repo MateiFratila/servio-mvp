@@ -119,7 +119,7 @@ async function emitInvoice(session, amountRon) {
 
     const consultantName = session.consultant ? session.consultant.displayName || 'Consultanță' : 'Consultant'
     const durationHours = session.durationMinutes ? session.durationMinutes / 60 : 1
-    const itemDescription = `Servicii consultanță Servio: ${consultantName} - ${durationHours} ${durationHours === 1 ? 'oră' : 'ore'}`
+    const itemDescription = `Servicii consultanță SERVO: ${consultantName} - ${durationHours} ${durationHours === 1 ? 'oră' : 'ore'}`
 
     const body = {
       CodUnic: FGO_COD_FISCAL,

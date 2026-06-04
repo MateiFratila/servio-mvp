@@ -33,11 +33,11 @@ export default function OverviewTab({ consultantName }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="card" style={{ background: 'var(--blue-bg)', border: '1px solid #bfdbfe' }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>
+      <div className="card" style={{ background: 'var(--blue-bg)', border: '1px solid rgba(55, 125, 255, 0.15)' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary-blue)', letterSpacing: '-0.02em' }}>
           {t.overview.welcomeBack(consultantName ?? '—')}
         </h2>
-        <p style={{ color: 'var(--primary)', fontSize: 13, marginTop: 4, opacity: 0.8 }}>
+        <p style={{ color: 'var(--primary-blue)', fontSize: 14, marginTop: 6, fontWeight: 500, opacity: 0.9 }}>
           {t.overview.activitySummary}
         </p>
       </div>

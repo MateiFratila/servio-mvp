@@ -250,7 +250,7 @@ router.post('/webhook', async (req, res) => {
       try {
         const expMs = new Date(session.slot.startTime).getTime() + session.durationMinutes * 60 * 1000 + 30 * 60 * 1000
         const room = await createRoom({
-          name: `servio-session-${session.id}`,
+          name: `servo-session-${session.id}`,
           exp: expMs,
         })
         await prisma.session.update({
