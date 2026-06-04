@@ -11,9 +11,11 @@ const STATUS_BADGE = {
 export default function ConsultantCard({ consultant }) {
   const navigate = useNavigate()
   const t = useLabels()
-  const { id, displayName, specialisations = [], bio, hourlyRate } = consultant
+  const { id, displayName, specialisations = [], bio, hourlyRate, averageRating, _count } = consultant
   const specNames = specialisations.map((cs) => cs.specialisation.name)
   const avatarSrc = `/api/consultants/${id}/avatar`
+  const ratingVal = averageRating != null ? Number(averageRating) : 0
+  const reviewsCount = _count?.reviews ?? 0
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -26,7 +28,24 @@ export default function ConsultantCard({ consultant }) {
         />
         <div>
           <div style={{ fontWeight: 600 }}>{displayName}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+            <span style={{ position: 'relative', display: 'inline-block', fontSize: 13, lineHeight: 1, letterSpacing: 0.5 }}>
+              <span style={{ color: '#d1d5db' }}>{'★★★★★'}</span>
+              <span style={{
+                position: 'absolute', top: 0, left: 0, overflow: 'hidden',
+                width: `${(ratingVal / 5) * 100}%`,
+                color: '#f5a623',
+                whiteSpace: 'nowrap',
+              }}>{'★★★★★'}</span>
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>
+              {ratingVal > 0 ? ratingVal.toFixed(1) : '—'}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              ({reviewsCount})
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
             {specNames.length > 0 ? specNames.map((name) => (
               <span key={name} className={STATUS_BADGE['confirmed']} style={{ fontSize: 11, background: 'var(--blue-bg)', color: 'var(--blue)' }}>
                 {name}

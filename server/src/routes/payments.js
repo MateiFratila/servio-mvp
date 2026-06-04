@@ -226,17 +226,27 @@ router.post('/webhook', async (req, res) => {
       data: { paymentStatus: 'paid', status: 'pending_confirmation' },
     })
 
-    // Fetch session with slot, client and consultant so we can create the room and send notifications
+    // Fetch session with slot, client, consultant and billing so we can create the room, send notifications, and emit FGO invoice
     const session = await prisma.session.findFirst({
       where: { stripePaymentIntentId: intent.id },
       include: {
         slot: true,
         client: true,
         consultant: { include: { user: true } },
+        billing: true,
       },
     })
 
     if (session) {
+      // Emit FGO invoice
+      try {
+        const { emitInvoice } = require('../lib/fgo')
+        const amountRon = intent.amount / 100
+        await emitInvoice(session, amountRon)
+      } catch (err) {
+        console.error('[FGO] Invoice emission failed for session', session.id, err.message)
+      }
+
       try {
         const expMs = new Date(session.slot.startTime).getTime() + session.durationMinutes * 60 * 1000 + 30 * 60 * 1000
         const room = await createRoom({

@@ -28,6 +28,8 @@ export const LABELS = {
         avgRate: 'Tarif mediu/oră',
       },
       filters: {
+        search: 'Caută',
+        searchPlaceholder: 'Nume, descriere, tag-uri...',
         specialisation: 'Specializare',
         maxRate: (max) => `Tarif maxim: €${max}`,
         availableToday: 'Disponibili astăzi',
@@ -284,6 +286,8 @@ export const LABELS = {
         avgRate: 'Avg. hourly rate',
       },
       filters: {
+        search: 'Search',
+        searchPlaceholder: 'Name, description, tags...',
         specialisation: 'Specialisation',
         maxRate: (max) => `Max rate: €${max}`,
         availableToday: 'Available today only',

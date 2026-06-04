@@ -6,7 +6,7 @@ import { useLabels } from '../../lib/useLabels'
 export default function CataloguePage() {
   const t = useLabels()
   const [selectedSpecIds, setSelectedSpecIds] = useState([])
-  const [maxRate, setMaxRate] = useState(300)
+  const [search, setSearch] = useState('')
   const [availableOnly, setAvailableOnly] = useState(false)
   const [sortBy, setSortBy] = useState('displayName')
 
@@ -14,7 +14,6 @@ export default function CataloguePage() {
 
   const { data, isLoading } = useGetConsultantsQuery({
     ...(selectedSpecIds.length && { specialisationIds: selectedSpecIds.join(',') }),
-    ...(maxRate < 300 && { maxRate }),
     ...(availableOnly && { availableToday: 'true' }),
     sortBy: sortBy === 'relevance' ? 'displayName' : sortBy === 'name' ? 'displayName' : 'hourlyRate',
     order: sortBy === 'rate-desc' ? 'desc' : 'asc',
@@ -29,12 +28,29 @@ export default function CataloguePage() {
     )
   }
 
-  const sorted = sortBy === 'rate-desc'
-    ? [...consultants].sort((a, b) => b.hourlyRate - a.hourlyRate)
-    : consultants
+  const filtered = consultants.filter((c) => {
+    if (!search.trim()) return true
+    const term = search.toLowerCase()
 
-  const avgRate = consultants.length
-    ? Math.round(consultants.reduce((s, c) => s + Number(c.hourlyRate), 0) / consultants.length)
+    const nameMatch = c.displayName?.toLowerCase().includes(term)
+    const descMatch = (c.description || '').toLowerCase().includes(term)
+
+    // Hashtags
+    const tagMatch = c.tags?.some((t) => t.tag?.toLowerCase().includes(term))
+
+    // Areas of Expertise: specialisations & expertiseCategories
+    const specMatch = c.specialisations?.some((s) => s.specialisation?.name?.toLowerCase().includes(term))
+    const expMatch = c.expertiseCategories?.some((ec) => ec.category?.name?.toLowerCase().includes(term))
+
+    return nameMatch || descMatch || tagMatch || specMatch || expMatch
+  })
+
+  const sorted = sortBy === 'rate-desc'
+    ? [...filtered].sort((a, b) => b.hourlyRate - a.hourlyRate)
+    : filtered
+
+  const avgRate = filtered.length
+    ? Math.round(filtered.reduce((s, c) => s + Number(c.hourlyRate), 0) / filtered.length)
     : 0
 
   return (
@@ -42,7 +58,7 @@ export default function CataloguePage() {
       {/* Stat bar */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="container" style={{ display: 'flex', gap: 40, padding: '16px 24px' }}>
-          <Stat label={t.catalogue.stats.available} value={data?.total ?? '—'} />
+          <Stat label={t.catalogue.stats.available} value={filtered.length} />
           <Stat label={t.catalogue.stats.specialisations} value={specialisationsData.length} />
           <Stat label={t.catalogue.stats.avgRate} value={avgRate ? `€${avgRate}` : '—'} />
         </div>
@@ -52,6 +68,17 @@ export default function CataloguePage() {
         {/* Filter sidebar */}
         <aside style={{ width: 220, flexShrink: 0 }}>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>{t.catalogue.filters.search}</label>
+              <input
+                type="text"
+                placeholder={t.catalogue.filters.searchPlaceholder}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+
             <div>
               <div style={{ fontWeight: 600, marginBottom: 10 }}>{t.catalogue.filters.specialisation}</div>
               {specialisationsData.map((s) => (
@@ -65,18 +92,6 @@ export default function CataloguePage() {
                   {s.name}
                 </label>
               ))}
-            </div>
-
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>{t.catalogue.filters.maxRate(maxRate)}</div>
-              <input
-                type="range"
-                min={0}
-                max={300}
-                value={maxRate}
-                onChange={(e) => setMaxRate(Number(e.target.value))}
-                style={{ width: '100%', padding: 0 }}
-              />
             </div>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
