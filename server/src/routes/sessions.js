@@ -205,7 +205,7 @@ router.patch('/:id', authorize('consultant', 'admin'), async (req, res, next) =>
       try {
         const expMs = new Date(sessionWithSlot.slot.startTime).getTime() + (sessionWithSlot.durationMinutes ?? 60) * 60 * 1000 + 30 * 60 * 1000
         const room = await createRoom({
-          name: `servo-session-${id}`,
+          name: `servio-session-${id}`,
           exp: expMs,
         })
         updateData.meetingUrl = room.url

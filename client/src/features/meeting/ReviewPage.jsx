@@ -93,7 +93,7 @@ export default function ReviewPage() {
       <div className="card">
         <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Evaluează ședința</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
-          Feedback-ul tău ne ajută să menținem SERVO la cel mai înalt standard de calitate.
+          Feedback-ul tău ne ajută să menținem SERVIO la cel mai înalt standard de calitate.
         </p>
 
         {session.review ? (
@@ -152,7 +152,7 @@ export default function ReviewPage() {
               {session.review.privateNotes && (
                 <div>
                   <strong style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-                    Recenzie privată (Vizibilă doar pentru admini SERVO)
+                    Recenzie privată (Vizibilă doar pentru admini SERVIO)
                   </strong>
                   <p style={{ margin: 0, padding: 12, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--grey-bg)', fontSize: 14, whiteSpace: 'pre-wrap' }}>
                     {session.review.privateNotes}
@@ -341,7 +341,7 @@ export default function ReviewPage() {
                 2. Recenzie Privată
               </h3>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 0, marginBottom: 12 }}>
-                Acest text este privat și va fi vizibil <strong>doar pentru adminii SERVO</strong>. Consultantul nu îl va putea vedea.
+                Acest text este privat și va fi vizibil <strong>doar pentru adminii SERVIO</strong>. Consultantul nu îl va putea vedea.
               </p>
 
               <div className="form-group">

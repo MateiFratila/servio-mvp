@@ -10,7 +10,7 @@ export default function Footer() {
     <footer style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '40px 0 24px', marginTop: 'auto' }}>
       <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 32 }}>
         <div>
-          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVO</span>
+          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVIO</span>
           <p style={{ color: 'var(--text-muted)', marginTop: 6, fontSize: 13, maxWidth: 260 }}>
             {t.footer.tagline}
           </p>

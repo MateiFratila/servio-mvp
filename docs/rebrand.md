@@ -6,7 +6,7 @@ Your task is to perform a complete UI Refresh and Visual Modernization of an exi
 
 OBJECTIVE
 
-Modernize the visual identity of the platform to align with the SERVO brand and create an enterprise-grade experience comparable to Upwork Enterprise, Toptal, Stripe Dashboard, Notion, and modern SaaS products.
+Modernize the visual identity of the platform to align with the SERVIO brand and create an enterprise-grade experience comparable to Upwork Enterprise, Toptal, Stripe Dashboard, Notion, and modern SaaS products.
 
 Do not introduce new features.
 Do not change workflows.
@@ -28,7 +28,7 @@ Focus exclusively on:
 
 BRAND IDENTITY
 
-Brand: SERVO
+Brand: SERVIO
 
 Brand Attributes:
 
@@ -171,7 +171,7 @@ Use the visual quality and refinement level of:
 •⁠  ⁠Webflow
 •⁠  ⁠HubSpot Enterprise
 
-but keep the SERVO visual identity and color palette.
+but keep the SERVIO visual identity and color palette.
 
 CARD DESIGN
 
@@ -247,4 +247,4 @@ Instead:
 Every design decision should make the existing platform feel more premium, more trustworthy, and more aligned with a modern enterprise marketplace while preserving the current product structure.
 
 Final result:
-A polished SERVO-branded UI refresh that feels like an enterprise-grade evolution of the current platform rather than a completely new product.
+A polished SERVIO-branded UI refresh that feels like an enterprise-grade evolution of the current platform rather than a completely new product.

@@ -14,7 +14,7 @@ function reviewRequest({ clientName, consultantName, sessionDate, bookingUrl }) 
     </p>
     <p>Leaving a review helps others find the right consultant and only takes a minute:</p>
     <p><a href="${bookingUrl}">Leave a review</a></p>
-    <p>Thank you for using SERVO.</p>
+    <p>Thank you for using SERVIO.</p>
   `
 
   return { subject, htmlContent }

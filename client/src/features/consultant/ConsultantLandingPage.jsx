@@ -54,13 +54,13 @@ export default function ConsultantLandingPage() {
       }}>
         <div className="container" style={{ maxWidth: 720 }}>
           <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--accent-orange)', marginBottom: 16 }}>
-            Devino consultant pe SERVO
+            Devino consultant pe SERVIO
           </p>
           <h1 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 20, letterSpacing: '-0.02em' }}>
             Transformă-ți expertiza în venituri, online.
           </h1>
           <p style={{ fontSize: 18, opacity: 0.9, lineHeight: 1.6, marginBottom: 40, maxWidth: 560, margin: '0 auto 40px' }}>
-            SERVO este platforma care conectează consultanți verificați cu clienți care au nevoie de ajutor concret.
+            SERVIO este platforma care conectează consultanți verificați cu clienți care au nevoie de ajutor concret.
             Fără intermediari, fără bătăi de cap.
           </p>
           <button
@@ -86,7 +86,7 @@ export default function ConsultantLandingPage() {
       {/* Benefits */}
       <section style={{ padding: '80px 24px' }}>
         <div className="container">
-          <h2 style={{ textAlign: 'center', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.02em' }}>De ce SERVO?</h2>
+          <h2 style={{ textAlign: 'center', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.02em' }}>De ce SERVIO?</h2>
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 16, marginBottom: 48 }}>
             Tot ce ai nevoie ca să îți desfășori activitatea de consultanță profesional.
           </p>
@@ -109,7 +109,7 @@ export default function ConsultantLandingPage() {
       {/* Video */}
       <section style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '80px 24px' }}>
         <div className="container" style={{ maxWidth: 800 }}>
-          <h2 style={{ textAlign: 'center', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.02em' }}>Vezi cum funcționează SERVO</h2>
+          <h2 style={{ textAlign: 'center', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.02em' }}>Vezi cum funcționează SERVIO</h2>
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 16, marginBottom: 40 }}>
             Un tur rapid al platformei — de la înregistrare până la prima sesiune.
           </p>
@@ -123,7 +123,7 @@ export default function ConsultantLandingPage() {
           }}>
             <iframe
               src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-              title="Prezentare SERVO"
+              title="Prezentare SERVIO"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}

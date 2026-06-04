@@ -60,7 +60,7 @@ export default function ClientLandingPage() {
             Expertul potrivit,<br />la un click distanță.
           </h1>
           <p style={{ fontSize: 18, opacity: 0.9, lineHeight: 1.6, marginBottom: 40, maxWidth: 560, margin: '0 auto 40px' }}>
-            SERVO te conectează cu consultanți verificați în domenii precum juridic, financiar, medical, tehnic și multe altele.
+            SERVIO te conectează cu consultanți verificați în domenii precum juridic, financiar, medical, tehnic și multe altele.
             Rapid, simplu și sigur.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -129,7 +129,7 @@ export default function ClientLandingPage() {
       {/* Video */}
       <section style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '80px 24px' }}>
         <div className="container" style={{ maxWidth: 800 }}>
-          <h2 style={{ textAlign: 'center', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.02em' }}>Vezi cum funcționează SERVO</h2>
+          <h2 style={{ textAlign: 'center', fontSize: 28, fontWeight: 800, marginBottom: 12, letterSpacing: '-0.02em' }}>Vezi cum funcționează SERVIO</h2>
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 16, marginBottom: 40 }}>
             Un tur rapid al platformei — de la înregistrare până la prima sesiune.
           </p>
@@ -143,7 +143,7 @@ export default function ClientLandingPage() {
           }}>
             <iframe
               src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-              title="Prezentare SERVO"
+              title="Prezentare SERVIO"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
@@ -212,7 +212,7 @@ export default function ClientLandingPage() {
       <div style={{ borderTop: '1px solid var(--border)', padding: '24px 24px', textAlign: 'center', background: 'var(--bg)' }}>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           Ești consultant?{' '}
-          <a href="/consultant" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Află cum poți oferi sesiuni pe SERVO</a>
+          <a href="/consultant" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Află cum poți oferi sesiuni pe SERVIO</a>
           {' · '}
           Ai deja cont?{' '}
           <a href="/login" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Autentifică-te</a>

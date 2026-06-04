@@ -60,9 +60,9 @@ function downloadIcs(session) {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//SERVO//Session//EN',
+    'PRODID:-//SERVIO//Session//EN',
     'BEGIN:VEVENT',
-    `UID:session-${session.id}@servo.ro`,
+    `UID:session-${session.id}@servio.ro`,
     `DTSTAMP:${fmt(new Date())}`,
     `DTSTART:${fmt(new Date(session.slot.startTime))}`,
     `DTEND:${fmt(new Date(session.slot.endTime))}`,

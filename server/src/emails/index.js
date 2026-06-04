@@ -8,7 +8,7 @@ const reviewRequest = require('./templates/reviewRequest')
 const pingPongMessage = require('./templates/pingPongMessage')
 
 const DEFAULT_SENDER = {
-  name: process.env.EMAIL_SENDER_NAME || 'SERVO',
+  name: process.env.EMAIL_SENDER_NAME || 'SERVIO',
   email: process.env.EMAIL_SENDER_ADDRESS || 'office@servio.ro',
 }
 

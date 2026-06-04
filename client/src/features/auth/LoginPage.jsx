@@ -40,7 +40,7 @@ export default function LoginPage() {
         ) : (
           <>
             <div style={{ marginBottom: 24, textAlign: 'center' }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVO</h1>
+              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVIO</h1>
               <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>{t.login.tagline}</p>
             </div>
 

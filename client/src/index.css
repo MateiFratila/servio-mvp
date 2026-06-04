@@ -3,7 +3,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* SERVO BRAND PALETTE */
+  /* SERVIO BRAND PALETTE */
   --primary-blue: #377DFF;
   --dark-blue: #1741A0;
   --primary-dark: #101A28; /* primary typography and navigation */
