@@ -2,7 +2,7 @@ const { Router } = require('express')
 const multer = require('multer')
 const prisma = require('../db')
 const { authenticate, authorize } = require('../middleware/authenticate')
-const { uploadBlob, getDownloadUrl } = require('../lib/azureStorage')
+const { uploadBlob, getDownloadUrl, streamBlob } = require('../lib/azureStorage')
 const { sendPingPongMessage } = require('../emails')
 
 const router = Router({ mergeParams: true })
@@ -181,8 +181,7 @@ router.get('/:messageId/download', async (req, res, next) => {
     if (!message || message.sessionId !== sessionId) return res.status(404).json({ error: 'Message not found' })
     if (!message.attachmentBlobName) return res.status(404).json({ error: 'No attachment on this message' })
 
-    const url = await getDownloadUrl(message.attachmentBlobName)
-    res.redirect(url)
+    await streamBlob(message.attachmentBlobName, res)
   } catch (err) {
     next(err)
   }

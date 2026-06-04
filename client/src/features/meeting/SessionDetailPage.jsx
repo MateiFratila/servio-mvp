@@ -166,6 +166,20 @@ export default function SessionDetailPage() {
     URL.revokeObjectURL(url)
   }
 
+  async function handleMessageDownload(msg) {
+    const res = await fetch(`/api/sessions/${sessionId}/messages/${msg.id}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = msg.attachmentFilename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function handleCancel() {
     if (role === 'consultant' || role === 'admin') {
       await updateStatus({ id: session.id, status: 'cancelled' })
@@ -462,8 +476,12 @@ export default function SessionDetailPage() {
                 <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
                 {msg.attachmentFilename && (
                   <a
-                    href={`/api/sessions/${sessionId}/messages/${msg.id}/download`}
-                    style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: 'var(--primary)' }}
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleMessageDownload(msg)
+                    }}
+                    style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: 'var(--primary)', cursor: 'pointer' }}
                   >
                     📎 {msg.attachmentFilename}
                   </a>

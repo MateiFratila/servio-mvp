@@ -2,7 +2,7 @@ const { Router } = require('express')
 const multer = require('multer')
 const prisma = require('../db')
 const { authenticate } = require('../middleware/authenticate')
-const { uploadBlob, getDownloadUrl, deleteBlob } = require('../lib/azureStorage')
+const { uploadBlob, getDownloadUrl, deleteBlob, streamBlob } = require('../lib/azureStorage')
 
 const router = Router({ mergeParams: true })
 
@@ -154,8 +154,7 @@ router.get('/:docId/download', async (req, res, next) => {
     const doc = await prisma.sessionDocument.findUnique({ where: { id: docId } })
     if (!doc || doc.sessionId !== sessionId) return res.status(404).json({ error: 'Document not found' })
 
-    const url = await getDownloadUrl(doc.blobName)
-    res.redirect(url)
+    await streamBlob(doc.blobName, res)
   } catch (err) {
     next(err)
   }
