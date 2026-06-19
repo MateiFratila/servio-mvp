@@ -204,7 +204,7 @@ export default function AcasaPage() {
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>Setare Tarif Orar</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        {profile.isHourlyRateSet ? `${profile.hourlyRate} RON` : 'Neconfigurat'}
+                        {profile.isHourlyRateSet ? `${profile.hourlyRate} EUR` : 'Neconfigurat'}
                       </div>
                     </div>
                   </div>
@@ -234,7 +234,7 @@ export default function AcasaPage() {
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>Date de Profil Complete</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        {profile.isProfileSetupComplete ? 'Descriere & Specializări setate' : 'Profil incomplet'}
+                        {profile.isProfileSetupComplete ? 'Nume, Poză, Bio & Specializări setate' : 'Lipsă elemente profil'}
                       </div>
                     </div>
                   </div>

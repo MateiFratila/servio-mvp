@@ -26,8 +26,8 @@ function consultantActivation({ activationUrl, guidesUrl, recipientName }) {
       <li><strong>Confirmarea adresei de email:</strong> Dă click pe butonul de activare de mai sus.</li>
       <li><strong>Setarea tarifului orar:</strong> Intră în contul tău și configurează prețul orar dorit pentru sesiuni.</li>
       <li><strong>Definirea disponibilității:</strong> Adaugă cel puțin un interval orar în calendarul tău în care clienții pot rezerva sesiuni.</li>
-      <li><strong>Finalizarea configurării Stripe:</strong> Conectează-ți contul bancar prin Stripe Connect pentru a primi plățile direct și securizat.</li>
-      <li><strong>Completarea datelor de profil:</strong> Completează descrierea profesională, alege specializările și categoriile potrivite.</li>
+      <li><strong>Finalizarea configurării Stripe:</strong> Conectează-ți contul bancar prin Stripe Connect pentru a primi încasările direct și securizat.</li>
+      <li><strong>Completarea datelor de profil:</strong> Adaugă poza de profil, alege specializările, descrie-te profesional și specifică numele afișat.</li>
     </ol>
 
     <p>

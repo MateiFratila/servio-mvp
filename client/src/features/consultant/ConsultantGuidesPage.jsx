@@ -67,13 +67,14 @@ export default function ConsultantGuidesPage() {
 
           <div className="card" style={{ padding: 24 }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>✍️</span> 5. Completarea descrierii și specializărilor
+              <span>✍️</span> 5. Completarea datelor de profil (Nume, Poză, Descriere, Specializări)
             </h3>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 10 }}>
-              Un profil detaliat oferă încredere deplină clienților. Descrie-ți experiența într-un mod prietenos și profesional:
+              Un profil detaliat oferă încredere deplină clienților. Asigură-te că ai completat toate elementele obligatorii:
             </p>
             <ul style={{ paddingLeft: 20, color: 'var(--text-muted)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <li><strong>Cine ești și ce probleme rezolvi:</strong> Începe cu 2-3 propoziții clare despre expertiza ta principală.</li>
+              <li><strong>Nume și Poza de profil (Avatar):</strong> Încarcă o fotografie clară cu chipul tău (dar nu este obligatoriu bannerul) și configurează numele profesional/afișat.</li>
+              <li><strong>Cine ești și ce probleme rezolvi (Bio):</strong> Începe cu 2-3 propoziții clare despre expertiza ta principală în descrierea de profil.</li>
               <li><strong>Specializări precise:</strong> Alege categoriile profesionale care te reprezintă cel mai bine, astfel încât clienții să te găsească ușor în catalog.</li>
             </ul>
           </div>

@@ -205,7 +205,10 @@ router.get('/me', authenticate, authorize('consultant', 'admin'), async (req, re
     const isProfileSetupComplete = !!(
       profile.description &&
       profile.description.trim() &&
-      profile.specialisations?.length > 0
+      profile.specialisations?.length > 0 &&
+      profile.displayName &&
+      profile.displayName.trim() &&
+      (profile.avatarUrl || profile.avatarBlobName)
     )
 
     const accountComplete =
@@ -239,6 +242,8 @@ router.post('/me/request-publication', authenticate, authorize('consultant'), as
         displayName: true,
         hourlyRate: true,
         description: true,
+        avatarUrl: true,
+        avatarBlobName: true,
         stripeOnboardingComplete: true,
         specialisations: { select: { specialisationId: true } },
         user: { select: { email: true, isEmailConfirmed: true } },
@@ -260,7 +265,10 @@ router.post('/me/request-publication', authenticate, authorize('consultant'), as
     const isProfileSetupComplete = !!(
       profile.description &&
       profile.description.trim() &&
-      profile.specialisations?.length > 0
+      profile.specialisations?.length > 0 &&
+      profile.displayName &&
+      profile.displayName.trim() &&
+      (profile.avatarUrl || profile.avatarBlobName)
     )
 
     const accountComplete =
