@@ -69,22 +69,154 @@ router.get('/consultants', async (_req, res, next) => {
       select: {
         id: true,
         displayName: true,
+        description: true,
         specialisations: {
           select: { specialisation: { select: { id: true, name: true, slug: true } } },
         },
         hourlyRate: true,
         avatarUrl: true,
+        avatarBlobName: true,
         isActive: true,
         userId: true,
         platformFeePct: true,
         stripeAccountId: true,
         stripeOnboardingComplete: true,
-        user: { select: { email: true, phone: true } },
+        user: { select: { email: true, phone: true, isEmailConfirmed: true } },
+        _count: {
+          select: { availabilitySlots: true }
+        }
       },
       orderBy: { displayName: 'asc' },
     })
-    res.json({ data: consultants, total: consultants.length })
+
+    const enriched = consultants.map(profile => {
+      const slotsCount = profile._count?.availabilitySlots || 0
+      const isEmailConfirmed = !!profile.user?.isEmailConfirmed
+      const isHourlyRateSet = parseFloat(profile.hourlyRate) > 0
+      const isAvailabilitySet = slotsCount > 0
+      const isStripeOnboarded = !!profile.stripeOnboardingComplete
+      const isProfileSetupComplete = !!(
+        profile.description &&
+        profile.description.trim() &&
+        profile.specialisations?.length > 0 &&
+        profile.displayName &&
+        profile.displayName.trim() &&
+        (profile.avatarUrl || profile.avatarBlobName)
+      )
+      const accountComplete =
+        isEmailConfirmed &&
+        isHourlyRateSet &&
+        isAvailabilitySet &&
+        isStripeOnboarded &&
+        isProfileSetupComplete
+
+      return {
+        ...profile,
+        isEmailConfirmed,
+        isHourlyRateSet,
+        isAvailabilitySet,
+        isStripeOnboarded,
+        isProfileSetupComplete,
+        accountComplete,
+      }
+    })
+
+    res.json({ data: enriched, total: enriched.length })
   } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/admin/consultants/:id/change-email — change consultant's email (admin only)
+router.post('/consultants/:id/change-email', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID invalid' })
+    }
+
+    const { email } = req.body
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ error: 'Adresa de email este nevalidă.' })
+    }
+
+    const trimmedEmail = email.trim().toLowerCase()
+
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { id },
+      select: { userId: true, user: { select: { email: true } } }
+    })
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Profilul de consultant nu a fost găsit.' })
+    }
+
+    if (profile.user.email === trimmedEmail) {
+      return res.json({ success: true, message: 'Adresa de email este deja aceasta.' })
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email: trimmedEmail } })
+    if (existing) {
+      return res.status(409).json({ error: 'Acest email este deja înregistrat la un alt cont.' })
+    }
+
+    await prisma.user.update({
+      where: { id: profile.userId },
+      data: { email: trimmedEmail }
+    })
+
+    res.json({ success: true, message: 'Emailul a fost schimbat cu succes!' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/admin/consultants/:id/resend-activation — resend activation email when unconfirmed (admin only)
+router.post('/consultants/:id/resend-activation', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID invalid' })
+    }
+
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { id },
+      include: { user: true }
+    })
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Profilul de consultant nu a fost găsit.' })
+    }
+
+    if (profile.user.isEmailConfirmed) {
+      return res.status(400).json({ error: 'Emailul acestui consultant este deja confirmat.' })
+    }
+
+    const { email } = profile.user
+    const crypto = require('crypto')
+    const emailConfirmationToken = crypto.randomBytes(32).toString('hex')
+
+    await prisma.user.update({
+      where: { id: profile.userId },
+      data: { emailConfirmationToken }
+    })
+
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`
+    const activationUrl = `${origin}/confirmare-email?token=${emailConfirmationToken}`
+    const guidesUrl = `${origin}/ghiduri-consultant`
+    const recipientName = profile.displayName || email.split('@')[0]
+
+    const { sendConsultantActivationEmail } = require('../emails')
+    await sendConsultantActivationEmail({
+      recipientEmail: email,
+      recipientName,
+      activationUrl,
+      guidesUrl,
+    })
+
+    res.json({ success: true, message: 'Emailul de activare a fost retrimis cu succes!' })
+  } catch (err) {
+    console.error('[resend-activation] error:', err.message)
     next(err)
   }
 })

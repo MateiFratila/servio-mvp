@@ -10,6 +10,21 @@ export const toolsApi = api.injectEndpoints({
       query: ({ id, ...body }) => ({ url: `/consultants/${id}`, method: 'PATCH', body }),
       invalidatesTags: ['Consultant'],
     }),
+    changeConsultantEmail: build.mutation({
+      query: ({ id, email }) => ({
+        url: `/admin/consultants/${id}/change-email`,
+        method: 'POST',
+        body: { email },
+      }),
+      invalidatesTags: ['Consultant'],
+    }),
+    resendConsultantActivation: build.mutation({
+      query: (id) => ({
+        url: `/admin/consultants/${id}/resend-activation`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Consultant'],
+    }),
     getAllSessions: build.query({
       query: (params = {}) => ({ url: '/sessions', params }),
       providesTags: ['Session'],
@@ -64,6 +79,8 @@ export const toolsApi = api.injectEndpoints({
 export const {
   useGetAllConsultantsQuery,
   useUpdateConsultantMutation,
+  useChangeConsultantEmailMutation,
+  useResendConsultantActivationMutation,
   useGetAllSessionsQuery,
   useForceDeleteSessionMutation,
   useGetAllUsersQuery,

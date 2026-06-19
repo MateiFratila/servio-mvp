@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout, selectCurrentRole } from '../auth/authSlice'
 import { useLabels } from '../../lib/useLabels'
@@ -27,6 +27,10 @@ function FinanciarSection() {
   const { data, isLoading, refetch, isFetching } = useGetConnectStatusQuery()
   const [startOnboarding, { isLoading: isStarting }] = useStartConnectOnboardingMutation()
   const t = useLabels()
+
+  useEffect(() => {
+    refetch()
+  }, [refetch])
 
   async function handleOnboard() {
     try {
