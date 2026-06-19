@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useGetAllSessionsQuery, useForceDeleteSessionMutation } from './toolsApi'
 
 function fmtDateTime(iso) {
@@ -16,6 +17,7 @@ const STATUS_BADGE = {
 }
 
 export default function AllSessionsTab() {
+  const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState('All')
   const { data, isLoading } = useGetAllSessionsQuery(
     statusFilter !== 'All' ? { status: statusFilter } : {}
@@ -58,7 +60,11 @@ export default function AllSessionsTab() {
             </thead>
             <tbody>
               {sessions.map((s) => (
-                <tr key={s.id}>
+                <tr
+                  key={s.id}
+                  onClick={() => navigate(`/sessions/${s.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>#{s.id}</td>
                   <td>{s.client?.email ?? '—'}</td>
                   <td style={{ fontWeight: 500 }}>{s.consultant?.displayName ?? '—'}</td>
@@ -67,7 +73,13 @@ export default function AllSessionsTab() {
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
                       {s.status !== 'cancelled' && s.status !== 'completed' && (
-                        <button className="btn btn-danger btn-sm" onClick={() => forceDelete(s.id)}>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            forceDelete(s.id)
+                          }}
+                        >
                           Force-cancel
                         </button>
                       )}

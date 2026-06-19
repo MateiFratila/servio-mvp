@@ -7,6 +7,139 @@ import CataloguePage from '../catalogue/CataloguePage'
 import Footer from './Footer'
 import { useLabels } from '../../lib/useLabels'
 
+/**
+ * @typedef {Object} SpecialisationDetails
+ * @property {number} id
+ * @property {string} name
+ * @property {string} slug
+ */
+
+/**
+ * @typedef {Object} ProfileSpecialisation
+ * @property {SpecialisationDetails} specialisation
+ */
+
+/**
+ * @typedef {Object} CategoryDetails
+ * @property {number} id
+ * @property {string} name
+ * @property {string} slug
+ * @property {number|null} specialisationId
+ */
+
+/**
+ * @typedef {Object} ProfileCategory
+ * @property {CategoryDetails} category
+ */
+
+/**
+ * @typedef {Object} ProfileTag
+ * @property {number} id
+ * @property {string} tag
+ */
+
+/**
+ * @typedef {Object} ProfileUser
+ * @property {number} id
+ * @property {string} email
+ * @property {boolean} isEmailConfirmed
+ */
+
+/**
+ * @typedef {Object} ConsultantProfileData
+ * @property {number} id
+ * @property {string} displayName
+ * @property {string|null} description
+ * @property {number|string} hourlyRate
+ * @property {string|null} avatarUrl
+ * @property {string|null} avatarBlobName
+ * @property {string|null} bannerUrl
+ * @property {string|null} bannerBlobName
+ * @property {any} languages
+ * @property {boolean} isActive
+ * @property {number} userId
+ * @property {number|string} platformFeePct
+ * @property {string|null} stripeAccountId
+ * @property {boolean} stripeOnboardingComplete
+ * @property {boolean} publicationRequested
+ * @property {number} averageRating
+ * @property {Object} _count
+ * @property {number} _count.reviews
+ * @property {ProfileUser} user
+ * @property {Array<ProfileSpecialisation>} specialisations
+ * @property {Array<ProfileCategory>} [expertiseCategories]
+ * @property {Array<ProfileTag>} [tags]
+ * @property {boolean} isEmailConfirmed
+ * @property {boolean} isHourlyRateSet
+ * @property {boolean} isAvailabilitySet
+ * @property {boolean} isStripeOnboarded
+ * @property {boolean} isProfileSetupComplete
+ * @property {boolean} accountComplete
+ */
+
+class ConsultantProfileModel {
+  /**
+   * @param {ConsultantProfileData} data
+   */
+  constructor(data) {
+    Object.assign(this, data)
+  }
+
+  /**
+   * Validates if the email address is confirmed.
+   * @returns {boolean}
+   */
+  validateEmailConfirmed() {
+    return !!(this.user?.isEmailConfirmed || this.isEmailConfirmed)
+  }
+
+  /**
+   * Validates if a valid hourly rate greater than 0 has been set.
+   * @returns {boolean}
+   */
+  validateHourlyRateSet() {
+    return parseFloat(this.hourlyRate) > 0
+  }
+
+  /**
+   * Validates if the Stripe Express account onboarding is fully complete.
+   * @returns {boolean}
+   */
+  validateStripeOnboarded() {
+    return !!(this.stripeOnboardingComplete || this.isStripeOnboarded)
+  }
+
+  /**
+   * Validates if the profile satisfies core presentation credentials: name, photo, bio, specialisations.
+   * @returns {boolean}
+   */
+  validateProfileSetupComplete() {
+    return !!(
+      this.description &&
+      this.description.trim() &&
+      this.specialisations &&
+      this.specialisations.length > 0 &&
+      this.displayName &&
+      this.displayName.trim() &&
+      (this.avatarUrl || this.avatarBlobName)
+    )
+  }
+
+  /**
+   * Validates whether all 5 onboarding checkpoints are met.
+   * @returns {boolean}
+   */
+  validateAccountComplete() {
+    return (
+      this.validateEmailConfirmed() &&
+      this.validateHourlyRateSet() &&
+      !!this.isAvailabilitySet &&
+      this.validateStripeOnboarded() &&
+      this.validateProfileSetupComplete()
+    )
+  }
+}
+
 export default function AcasaPage() {
   const [active, setActive] = useState(0)
   const navigate = useNavigate()
@@ -17,9 +150,11 @@ export default function AcasaPage() {
   const isConsultant = currentUser?.role === 'consultant'
 
   // Only query profile if the user is a logged-in consultant
-  const { data: profile, refetch: refetchProfile } = useGetMyProfileQuery(undefined, {
+  const { data: rawProfile, refetch: refetchProfile } = useGetMyProfileQuery(undefined, {
     skip: !isConsultant,
   })
+
+  const profile = rawProfile ? new ConsultantProfileModel(rawProfile) : null
 
   const [requestPublication, { isLoading: isRequesting }] = useRequestPublicationMutation()
   const [toast, setToast] = useState(null)
