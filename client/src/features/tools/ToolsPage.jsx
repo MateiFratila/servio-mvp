@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import PlatformOverviewTab from './PlatformOverviewTab'
 import ManageConsultantsTab from './ManageConsultantsTab'
 import AllSessionsTab from './AllSessionsTab'
@@ -18,7 +19,17 @@ const TABS = [
 ]
 
 export default function ToolsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('overview')
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['overview', 'consultants', 'sessions', 'users', 'settings', 'feedbacks', 'suggestions'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    } else {
+      setActiveTab('overview')
+    }
+  }, [searchParams])
 
   return (
     <div className="container" style={{ padding: '32px 24px' }}>
@@ -32,7 +43,13 @@ export default function ToolsPage() {
           <button
             key={tab.id}
             className={`tab-btn${activeTab === tab.id ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setSearchParams((prev) => {
+                const newParams = new URLSearchParams(prev)
+                newParams.set('tab', tab.id)
+                return newParams
+              })
+            }}
           >
             {tab.label}
           </button>

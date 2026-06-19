@@ -6,7 +6,7 @@ import AccountSettingsTab from './AccountSettingsTab'
 import FeedbackForm from '../../components/FeedbackForm'
 
 export default function ClientDashboard() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('sessions')
   const t = useLabels()
 
@@ -14,6 +14,8 @@ export default function ClientDashboard() {
     const tabParam = searchParams.get('tab')
     if (tabParam && ['sessions', 'settings', 'contact'].includes(tabParam)) {
       setActiveTab(tabParam)
+    } else {
+      setActiveTab('sessions')
     }
   }, [searchParams])
 
@@ -32,7 +34,13 @@ export default function ClientDashboard() {
               <button
                 key={tab.id}
                 className={`tab-btn${activeTab === tab.id ? ' active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setSearchParams((prev) => {
+                    const newParams = new URLSearchParams(prev)
+                    newParams.set('tab', tab.id)
+                    return newParams
+                  })
+                }}
               >
                 {tab.label}
               </button>

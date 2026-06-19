@@ -13,7 +13,7 @@ import FeedbackForm from '../../components/FeedbackForm'
 
 export default function DashboardPage() {
   const user = useSelector(selectCurrentUser)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('overview')
   const t = useLabels()
 
@@ -21,6 +21,8 @@ export default function DashboardPage() {
     const tabParam = searchParams.get('tab')
     if (tabParam && ['overview', 'sessions', 'availability', 'profile', 'settings', 'reviews', 'contact'].includes(tabParam)) {
       setActiveTab(tabParam)
+    } else {
+      setActiveTab('overview')
     }
   }, [searchParams])
 
@@ -43,7 +45,13 @@ export default function DashboardPage() {
               <button
                 key={tab.id}
                 className={`tab-btn${activeTab === tab.id ? ' active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setSearchParams((prev) => {
+                    const newParams = new URLSearchParams(prev)
+                    newParams.set('tab', tab.id)
+                    return newParams
+                  })
+                }}
               >
                 {tab.label}
               </button>
