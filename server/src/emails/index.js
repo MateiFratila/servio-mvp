@@ -6,6 +6,9 @@ const bookingCancelled = require('./templates/bookingCancelled')
 const sessionReminder = require('./templates/sessionReminder')
 const reviewRequest = require('./templates/reviewRequest')
 const pingPongMessage = require('./templates/pingPongMessage')
+const forgotPassword = require('./templates/forgotPassword')
+const consultantActivation = require('./templates/consultantActivation')
+const requestPublication = require('./templates/requestPublication')
 
 const DEFAULT_SENDER = {
   name: process.env.EMAIL_SENDER_NAME || 'SERVIO',
@@ -93,6 +96,21 @@ async function sendPingPongMessage({ recipientEmail, recipientName, senderRole, 
   await sendEmail({ to: recipientEmail, toName: recipientName, subject, htmlContent })
 }
 
+async function sendForgotPasswordEmail({ recipientEmail, recipientName, resetUrl }) {
+  const { subject, htmlContent } = forgotPassword({ recipientName, resetUrl })
+  await sendEmail({ to: recipientEmail, toName: recipientName, subject, htmlContent })
+}
+
+async function sendConsultantActivationEmail({ recipientEmail, recipientName, activationUrl, guidesUrl }) {
+  const { subject, htmlContent } = consultantActivation({ activationUrl, guidesUrl, recipientName })
+  await sendEmail({ to: recipientEmail, toName: recipientName, subject, htmlContent })
+}
+
+async function sendPublicationRequestEmail({ adminEmail, consultantName, consultantEmail, adminUrl }) {
+  const { subject, htmlContent } = requestPublication({ consultantName, consultantEmail, adminUrl })
+  await sendEmail({ to: adminEmail, subject, htmlContent })
+}
+
 module.exports = {
   sendEmail,
   subscribeToList,
@@ -103,4 +121,7 @@ module.exports = {
   sendSessionReminder,
   sendReviewRequest,
   sendPingPongMessage,
+  sendForgotPasswordEmail,
+  sendConsultantActivationEmail,
+  sendPublicationRequestEmail,
 }

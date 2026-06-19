@@ -7,6 +7,7 @@ import AuthGuard from './components/AuthGuard'
 import RoleGuard from './components/RoleGuard'
 import Navbar from './components/Navbar'
 import LoginPage from './features/auth/LoginPage'
+import ResetPasswordPage from './features/auth/ResetPasswordPage'
 import AcasaPage from './features/acasa/AcasaPage'
 import ContulMeuPage from './features/contul-meu/ContulMeuPage'
 import CataloguePage from './features/catalogue/CataloguePage'
@@ -19,6 +20,8 @@ import ConsultantLandingPage from './features/consultant/ConsultantLandingPage'
 import ConsultantRegisterPage from './features/consultant/ConsultantRegisterPage'
 import ClientLandingPage from './features/landing/ClientLandingPage'
 import ClientRegisterPage from './features/landing/ClientRegisterPage'
+import ConfirmEmailPage from './features/auth/ConfirmEmailPage'
+import ConsultantGuidesPage from './features/consultant/ConsultantGuidesPage'
 
 function RootRedirect() {
   return <Navigate to="/acasa" replace />
@@ -85,6 +88,16 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/confirmare-email" element={<ConfirmEmailPage />} />
+        <Route
+          path="/ghiduri-consultant"
+          element={
+            <PublicLayout>
+              <ConsultantGuidesPage />
+            </PublicLayout>
+          }
+        />
 
         <Route
           path="/acasa"

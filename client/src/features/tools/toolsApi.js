@@ -26,6 +26,10 @@ export const toolsApi = api.injectEndpoints({
       query: ({ id, role }) => ({ url: `/users/${id}`, method: 'PATCH', body: { role } }),
       invalidatesTags: ['User'],
     }),
+    updateUserByAdmin: build.mutation({
+      query: ({ id, ...body }) => ({ url: `/users/${id}`, method: 'PATCH', body }),
+      invalidatesTags: ['User'],
+    }),
     getSystemSettings: build.query({
       query: () => '/admin/settings',
       providesTags: ['SystemSettings'],
@@ -64,6 +68,7 @@ export const {
   useForceDeleteSessionMutation,
   useGetAllUsersQuery,
   useUpdateUserRoleMutation,
+  useUpdateUserByAdminMutation,
   useGetSystemSettingsQuery,
   useUpdateSystemSettingMutation,
   useGetSuggestionsQuery,

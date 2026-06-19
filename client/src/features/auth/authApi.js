@@ -35,6 +35,27 @@ export const authApi = api.injectEndpoints({
         method: 'POST',
       }),
     }),
+    forgotPassword: build.mutation({
+      query: (body) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body,
+      }),
+    }),
+    resetPassword: build.mutation({
+      query: (body) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body,
+      }),
+    }),
+    confirmEmail: build.mutation({
+      query: (body) => ({
+        url: '/auth/confirm-email',
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 })
 
@@ -44,4 +65,7 @@ export const {
   useRegisterConsultantMutation,
   useRefreshMutation,
   useLogoutApiMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+  useConfirmEmailMutation,
 } = authApi

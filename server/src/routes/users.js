@@ -88,21 +88,37 @@ router.delete('/me', async (req, res, next) => {
   }
 })
 
-// PATCH /api/users/:id — admin: change role
+// PATCH /api/users/:id — admin: edit user (role and/or password)
 router.patch('/:id', authorize('admin'), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const { role } = req.body
-    const VALID_ROLES = ['client', 'consultant', 'admin']
-    if (!role || !VALID_ROLES.includes(role)) {
-      return res.status(400).json({ error: `role must be one of: ${VALID_ROLES.join(', ')}` })
+    const { role, password } = req.body
+    const data = {}
+
+    if (role !== undefined) {
+      const VALID_ROLES = ['client', 'consultant', 'admin']
+      if (!VALID_ROLES.includes(role)) {
+        return res.status(400).json({ error: `role must be one of: ${VALID_ROLES.join(', ')}` })
+      }
+      data.role = role
+    }
+
+    if (password !== undefined) {
+      if (password.length < 8) {
+        return res.status(400).json({ error: 'Parola trebuie să aibă cel puțin 8 caractere' })
+      }
+      data.passwordHash = await bcrypt.hash(password, 12)
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'Nothing to update' })
     }
 
     const updated = await prisma.user.update({
       where: { id },
-      data: { role },
+      data,
       select: USER_SELECT,
     })
     res.json(updated)

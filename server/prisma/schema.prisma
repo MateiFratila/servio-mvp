@@ -39,6 +39,10 @@ model User {
   passwordHash String   @map("password_hash")
   phone        String?  @map("phone")
   role         Role     @default(client)
+  resetPasswordToken   String?   @unique @map("reset_password_token")
+  resetPasswordExpires DateTime? @map("reset_password_expires")
+  isEmailConfirmed       Boolean   @default(false) @map("is_email_confirmed")
+  emailConfirmationToken String?   @unique @map("email_confirmation_token")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -66,6 +70,7 @@ model ConsultantProfile {
   isActive                 Boolean  @default(true) @map("is_active")
   stripeAccountId          String?  @map("stripe_account_id")
   stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
+  publicationRequested     Boolean  @default(false) @map("publication_requested")
   platformFeePct           Decimal  @default(30) @map("platform_fee_pct") @db.Decimal(5, 2)
   averageRating            Decimal  @default(0.00) @map("average_rating") @db.Decimal(3, 2)
   createdAt                DateTime @default(now()) @map("created_at")

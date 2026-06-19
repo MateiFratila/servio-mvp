@@ -16,7 +16,7 @@ export default function AuthGuard({ children }) {
   }
 
   if (!token) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/acasa" state={{ from: location }} replace />
   }
 
   return children

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { useNavigate, Link } from 'react-router-dom'
 import { setCredentials } from './authSlice'
-import { useLoginMutation } from './authApi'
+import { useLoginMutation, useForgotPasswordMutation } from './authApi'
 import { useLabels } from '../../lib/useLabels'
 import ClientRegisterForm from './ClientRegisterForm'
 
@@ -10,12 +10,18 @@ export default function LoginPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const [login, { isLoading }] = useLoginMutation()
+  const [sendResetEmail, { isLoading: isSendingForgot }] = useForgotPasswordMutation()
   const t = useLabels()
 
   const [isRegistering, setIsRegistering] = useState(false)
+  const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotSuccess, setForgotSuccess] = useState('')
+  const [forgotError, setForgotError] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -32,11 +38,89 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotSubmit(e) {
+    e.preventDefault()
+    if (!forgotEmail) {
+      setForgotError('Te rugăm să introduci adresa de email.')
+      return
+    }
+    setForgotError('')
+    setForgotSuccess('')
+    try {
+      const result = await sendResetEmail({ email: forgotEmail }).unwrap()
+      setForgotSuccess(result.message || 'Link-ul de resetare a fost trimis!')
+      setForgotEmail('')
+    } catch (err) {
+      setForgotError(err?.data?.error || 'A apărut o eroare la trimiterea emailului. Încearcă din nou.')
+    }
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 24 }}>
-      <div className="card" style={{ width: '100%', maxWidth: isRegistering ? 420 : 400, padding: isRegistering ? 36 : undefined }}>
+      <div className="card" style={{ width: '100%', maxWidth: (isRegistering || isForgotPassword) ? 420 : 400, padding: (isRegistering || isForgotPassword) ? 36 : undefined }}>
         {isRegistering ? (
           <ClientRegisterForm onToggleLogin={() => setIsRegistering(false)} />
+        ) : isForgotPassword ? (
+          <>
+            <div style={{ marginBottom: 24, textAlign: 'center' }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVIO</h1>
+              <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>Recuperare parolă</p>
+            </div>
+
+            {forgotError && (
+              <div className="badge badge-red" style={{ display: 'block', marginBottom: 16, padding: '8px 12px', borderRadius: 'var(--radius)' }}>
+                {forgotError}
+              </div>
+            )}
+
+            {forgotSuccess && (
+              <div className="badge badge-green" style={{ display: 'block', marginBottom: 16, padding: '8px 12px', borderRadius: 'var(--radius)' }}>
+                {forgotSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleForgotSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="form-group">
+                <label htmlFor="forgotEmail">Adresă de email</label>
+                <input
+                  id="forgotEmail"
+                  type="email"
+                  placeholder="tu@exemplu.ro"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ marginTop: 4 }} disabled={isSendingForgot}>
+                {isSendingForgot ? 'Se trimite…' : 'Trimite link de resetare'}
+              </button>
+            </form>
+
+            <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text-muted)' }}>
+              Te-ai răzgândit?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(false)
+                  setForgotError('')
+                  setForgotSuccess('')
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  color: 'var(--primary)',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  textDecoration: 'underline'
+                }}
+              >
+                Înapoi la conectare
+              </button>
+            </p>
+          </>
         ) : (
           <>
             <div style={{ marginBottom: 24, textAlign: 'center' }}>
@@ -81,6 +165,31 @@ export default function LoginPage() {
             </form>
 
             <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text-muted)' }}>
+              Ai uitat parola?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(true)
+                  setError('')
+                  setForgotError('')
+                  setForgotSuccess('')
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  color: 'var(--primary)',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  textDecoration: 'underline'
+                }}
+              >
+                Recuperează parola
+              </button>
+            </p>
+
+            <p style={{ textAlign: 'center', marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>
               Nu ai cont?{' '}
               <button
                 type="button"

@@ -67,6 +67,10 @@ export const dashboardApi = api.injectEndpoints({
       query: () => '/consultants/me/reviews',
       providesTags: ['Review'],
     }),
+    requestPublication: build.mutation({
+      query: () => ({ url: '/consultants/me/request-publication', method: 'POST' }),
+      invalidatesTags: ['User'],
+    }),
   }),
 })
 
@@ -88,4 +92,5 @@ export const {
   useSuggestSpecialisationMutation,
   useSuggestExpertiseAreaMutation,
   useGetMyReviewsQuery,
+  useRequestPublicationMutation,
 } = dashboardApi

@@ -4,6 +4,7 @@ const prisma = require('../db')
 const stripe = require('../lib/stripe')
 const { authenticate, authorize, optionalAuthenticate } = require('../middleware/authenticate')
 const { uploadBlob, streamBlob, deleteBlob } = require('../lib/azureStorage')
+const { sendPublicationRequestEmail } = require('../emails')
 
 const router = Router()
 
@@ -57,6 +58,7 @@ const CONSULTANT_SELECT = {
   platformFeePct: true,
   stripeAccountId: true,
   stripeOnboardingComplete: true,
+  publicationRequested: true,
   averageRating: true,
   _count: { select: { reviews: true } },
   specialisations: {
@@ -179,10 +181,126 @@ router.get('/me', authenticate, authorize('consultant', 'admin'), async (req, re
   try {
     const profile = await prisma.consultantProfile.findUnique({
       where: { userId: req.user.id },
-      select: CONSULTANT_SELECT,
+      select: {
+        ...CONSULTANT_SELECT,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            isEmailConfirmed: true,
+          },
+        },
+      },
     })
     if (!profile) return res.status(404).json({ error: 'Consultant profile not found' })
-    res.json(profile)
+
+    const slotsCount = await prisma.availabilitySlot.count({
+      where: { consultantId: profile.id },
+    })
+
+    const isEmailConfirmed = !!profile.user?.isEmailConfirmed
+    const isHourlyRateSet = parseFloat(profile.hourlyRate) > 0
+    const isAvailabilitySet = slotsCount > 0
+    const isStripeOnboarded = !!profile.stripeOnboardingComplete
+    const isProfileSetupComplete = !!(
+      profile.description &&
+      profile.description.trim() &&
+      profile.specialisations?.length > 0
+    )
+
+    const accountComplete =
+      isEmailConfirmed &&
+      isHourlyRateSet &&
+      isAvailabilitySet &&
+      isStripeOnboarded &&
+      isProfileSetupComplete
+
+    res.json({
+      ...profile,
+      isEmailConfirmed,
+      isHourlyRateSet,
+      isAvailabilitySet,
+      isStripeOnboarded,
+      isProfileSetupComplete,
+      accountComplete,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/consultants/me/request-publication — consultant triggers profile publication review
+router.post('/me/request-publication', authenticate, authorize('consultant'), async (req, res, next) => {
+  try {
+    const profile = await prisma.consultantProfile.findUnique({
+      where: { userId: req.user.id },
+      select: {
+        id: true,
+        displayName: true,
+        hourlyRate: true,
+        description: true,
+        stripeOnboardingComplete: true,
+        specialisations: { select: { specialisationId: true } },
+        user: { select: { email: true, isEmailConfirmed: true } },
+      },
+    })
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Profilul de consultant nu a fost găsit.' })
+    }
+
+    const slotsCount = await prisma.availabilitySlot.count({
+      where: { consultantId: profile.id },
+    })
+
+    const isEmailConfirmed = !!profile.user?.isEmailConfirmed
+    const isHourlyRateSet = parseFloat(profile.hourlyRate) > 0
+    const isAvailabilitySet = slotsCount > 0
+    const isStripeOnboarded = !!profile.stripeOnboardingComplete
+    const isProfileSetupComplete = !!(
+      profile.description &&
+      profile.description.trim() &&
+      profile.specialisations?.length > 0
+    )
+
+    const accountComplete =
+      isEmailConfirmed &&
+      isHourlyRateSet &&
+      isAvailabilitySet &&
+      isStripeOnboarded &&
+      isProfileSetupComplete
+
+    if (!accountComplete) {
+      return res.status(400).json({ error: 'Trebuie să îndeplinești toate cele 5 condiții înainte de a solicita publicarea.' })
+    }
+
+    // Set publicationRequested to true
+    await prisma.consultantProfile.update({
+      where: { id: profile.id },
+      data: { publicationRequested: true },
+    })
+
+    // Find admins to notify them via email
+    const admins = await prisma.user.findMany({
+      where: { role: 'admin' },
+      select: { email: true },
+    })
+
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`
+    const adminUrl = `${origin}/tools`
+
+    for (const admin of admins) {
+      sendPublicationRequestEmail({
+        adminEmail: admin.email,
+        consultantName: profile.displayName || profile.user.email.split('@')[0],
+        consultantEmail: profile.user.email,
+        adminUrl,
+      }).catch(err =>
+        console.error(`[brevo] Failed sending publication request email to ${admin.email}:`, err.message)
+      )
+    }
+
+    res.json({ success: true, message: 'Cererea de publicare a fost trimisă cu succes administratorilor.' })
   } catch (err) {
     next(err)
   }

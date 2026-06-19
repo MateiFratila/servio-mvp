@@ -1,4 +1,5 @@
-import { useGetAllUsersQuery, useUpdateUserRoleMutation } from './toolsApi'
+import { useState } from 'react'
+import { useGetAllUsersQuery, useUpdateUserRoleMutation, useUpdateUserByAdminMutation } from './toolsApi'
 
 const ROLES = ['client', 'consultant', 'admin']
 
@@ -11,6 +12,47 @@ const ROLE_BADGE = {
 export default function UserManagementTab() {
   const { data: users = [], isLoading } = useGetAllUsersQuery()
   const [updateUserRole] = useUpdateUserRoleMutation()
+  const [updateUserByAdmin, { isLoading: isUpdating }] = useUpdateUserByAdminMutation()
+
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  function handleOpenModal(user) {
+    setSelectedUser(user)
+    setNewPassword('')
+    setError('')
+    setSuccess('')
+  }
+
+  function handleCloseModal() {
+    setSelectedUser(null)
+    setNewPassword('')
+    setError('')
+    setSuccess('')
+  }
+
+  async function handleSavePassword() {
+    if (newPassword.length < 8) {
+      setError('Parola trebuie să aibă cel puțin 8 caractere.')
+      return
+    }
+
+    setError('')
+    setSuccess('')
+    try {
+      await updateUserByAdmin({ id: selectedUser.id, password: newPassword }).unwrap()
+      setSuccess('Parola utilizatorului a fost actualizată cu succes!')
+      setNewPassword('')
+      // Keep modal open/success message briefly or close shortly after
+      setTimeout(() => {
+        handleCloseModal()
+      }, 1500)
+    } catch (err) {
+      setError(err?.data?.error || 'A apărut o eroare la salvarea parolei.')
+    }
+  }
 
   return (
     <div className="card">
@@ -39,13 +81,24 @@ export default function UserManagementTab() {
                     {new Date(u.createdAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
                   <td>
-                    <select
-                      value={u.role}
-                      onChange={(e) => updateUserRole({ id: u.id, role: e.target.value })}
-                      style={{ width: 'auto', padding: '4px 8px', fontSize: 12 }}
-                    >
-                      {ROLES.map((r) => <option key={r}>{r}</option>)}
-                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <select
+                        value={u.role}
+                        onChange={(e) => updateUserRole({ id: u.id, role: e.target.value })}
+                        style={{ width: 'auto', padding: '4px 8px', fontSize: 12 }}
+                      >
+                        {ROLES.map((r) => <option key={r}>{r}</option>)}
+                      </select>
+                      
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleOpenModal(u)}
+                        style={{ padding: '4px 8px', fontSize: 12, border: '1px solid var(--border-color)', background: 'none' }}
+                      >
+                        Modifică Parola
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -54,6 +107,50 @@ export default function UserManagementTab() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {selectedUser && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div className="card" style={{ maxWidth: 400, width: '90%', padding: 28, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Schimbă Parola</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Utilizator: {selectedUser.email}</p>
+            
+            {error && (
+              <div className="badge badge-red" style={{ display: 'block', marginBottom: 16, padding: '8px 12px', borderRadius: 'var(--radius)' }}>
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="badge badge-green" style={{ display: 'block', marginBottom: 16, padding: '8px 12px', borderRadius: 'var(--radius)' }}>
+                {success}
+              </div>
+            )}
+
+            <div className="form-group" style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: 12, fontWeight: 600 }}>Noua parolă (minim 8 caractere)</label>
+              <input
+                type="password"
+                placeholder="Introdu noua parolă"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn btn-secondary" onClick={handleCloseModal} disabled={isUpdating}>
+                Anulează
+              </button>
+              <button className="btn btn-primary" onClick={handleSavePassword} disabled={isUpdating || newPassword.length < 8}>
+                {isUpdating ? 'Se salvează…' : 'Salvează Parola'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
