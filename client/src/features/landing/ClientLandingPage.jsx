@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 
 const benefits = [
   {
@@ -41,6 +41,7 @@ const steps = [
 
 export default function ClientLandingPage() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
@@ -212,10 +213,10 @@ export default function ClientLandingPage() {
       <div style={{ borderTop: '1px solid var(--border)', padding: '24px 24px', textAlign: 'center', background: 'var(--bg)' }}>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           Ești consultant?{' '}
-          <a href="/consultant" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Află cum poți oferi sesiuni pe SERVIO</a>
+          <Link to="/consultant" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Află cum poți oferi sesiuni pe SERVIO</Link>
           {' · '}
           Ai deja cont?{' '}
-          <a href="/login" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Autentifică-te</a>
+          <Link to="/login" state={{ from: location }} style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Autentifică-te</Link>
         </p>
       </div>
     </div>

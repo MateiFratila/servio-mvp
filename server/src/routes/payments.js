@@ -14,11 +14,15 @@ function isMissingStripeAccountError(err) {
 
 // POST /api/payments/create-intent
 // Creates a PaymentIntent and a pending session row.
-// Body: { consultantId, slotId, notes?, duration? }  duration: 1 (default) | 2 (hours)
+// Body: { consultantId, slotId, notes?, duration? }  duration in hours (e.g., 0.5, 1, 1.5, 2)
 router.post('/create-intent', authenticate, async (req, res, next) => {
   try {
     const { consultantId, slotId, notes, duration = 1, billingInfo } = req.body
-    const durationMinutes = parseInt(duration) === 2 ? 120 : 60
+    const durationMinutes = Math.round(parseFloat(duration) * 60)
+    const ALLOWED_DURATIONS = [30, 60, 90, 120]
+    if (!ALLOWED_DURATIONS.includes(durationMinutes)) {
+      return res.status(400).json({ error: 'Durata sesiunii este invalidă. Trebuie să fie de 30, 60, 90 sau 120 de minute.' })
+    }
     if (!consultantId || !slotId) {
       return res.status(400).json({ error: 'consultantId and slotId are required' })
     }
@@ -61,10 +65,43 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
       }
 
       // Check for an existing session on this slot
-      const existingSession = await tx.session.findUnique({ where: { slotId: slot.id } })
+      const existingSession = await tx.session.findUnique({
+        where: { slotId: slot.id },
+        include: { slot: true },
+      })
 
       // If there's already an unpaid session belonging to this client, reuse it
       if (existingSession && existingSession.paymentStatus === 'unpaid' && existingSession.clientId === req.user.id) {
+        // Release previous slots of this specific unpaid session first so they can be re-resolved
+        const endTimeLimit = new Date(existingSession.slot.startTime.getTime() + existingSession.durationMinutes * 60000)
+        await tx.availabilitySlot.updateMany({
+          where: {
+            consultantId: parseInt(consultantId),
+            startTime: { gte: existingSession.slot.startTime, lt: endTimeLimit },
+          },
+          data: { isBooked: false },
+        })
+
+        // Reserve slots for the new duration
+        let currentSlot = slot
+        const totalSlotsToBook = durationMinutes / 30
+        for (let i = 0; i < totalSlotsToBook; i++) {
+          const targetSlot = await tx.availabilitySlot.findFirst({
+            where: {
+              id: i === 0 ? slot.id : undefined,
+              consultantId: slot.consultantId,
+              isBooked: false,
+              startTime: i === 0 ? undefined : currentSlot.endTime,
+            },
+          })
+          if (!targetSlot) {
+            const hoursNeeded = durationMinutes / 60
+            return { error: `Nu există intervale consecutive suficiente pentru o sesiune de ${hoursNeeded} ore.`, status: 409 }
+          }
+          await tx.availabilitySlot.update({ where: { id: targetSlot.id }, data: { isBooked: true } })
+          currentSlot = targetSlot
+        }
+
         const intent = await stripe.paymentIntents.retrieve(existingSession.stripePaymentIntentId)
 
         // Update the session's notes and duration, and upsert the billing info
@@ -137,16 +174,24 @@ router.post('/create-intent', authenticate, async (req, res, next) => {
         }
       }
 
-      // Reserve primary slot
-      await tx.availabilitySlot.update({ where: { id: slot.id }, data: { isBooked: true } })
-
-      // For 2h sessions, also find and reserve the immediately consecutive slot
-      if (durationMinutes === 120) {
-        const slot2 = await tx.availabilitySlot.findFirst({
-          where: { consultantId: slot.consultantId, isBooked: false, startTime: slot.endTime },
+      // Reserve slots for the session
+      let currentSlot = slot
+      const totalSlotsToBook = durationMinutes / 30
+      for (let i = 0; i < totalSlotsToBook; i++) {
+        const targetSlot = await tx.availabilitySlot.findFirst({
+          where: {
+            id: i === 0 ? slot.id : undefined,
+            consultantId: slot.consultantId,
+            isBooked: false,
+            startTime: i === 0 ? undefined : currentSlot.endTime,
+          },
         })
-        if (!slot2) return { error: 'No consecutive slot available for a 2-hour session', status: 409 }
-        await tx.availabilitySlot.update({ where: { id: slot2.id }, data: { isBooked: true } })
+        if (!targetSlot) {
+          const hoursNeeded = durationMinutes / 60
+          return { error: `Nu există intervale consecutive suficiente pentru o sesiune de ${hoursNeeded} ore.`, status: 409 }
+        }
+        await tx.availabilitySlot.update({ where: { id: targetSlot.id }, data: { isBooked: true } })
+        currentSlot = targetSlot
       }
 
       // Convert hourly rate from EUR to RON using BNR exchange rate, apply 21% VAT, then to bani (1 RON = 100 bani)
@@ -266,8 +311,8 @@ router.post('/webhook', async (req, res) => {
         const appUrl = process.env.APP_URL || 'http://localhost:5173'
         const bookingUrl = `${appUrl}/sessions/${session.id}`
         const startTime = new Date(session.slot.startTime)
-        const sessionDate = startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })
-        const sessionTime = startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
+        const sessionDate = startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' })
+        const sessionTime = startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
 
         await sendBookingPendingConfirmation({
           consultantEmail: session.consultant.user.email,
@@ -286,34 +331,26 @@ router.post('/webhook', async (req, res) => {
 
   if (event.type === 'payment_intent.payment_failed') {
     const intent = event.data.object
-    // Release the slot and mark session cancelled
+    // Release the slots and mark session cancelled
     const session = await prisma.session.findFirst({
       where: { stripePaymentIntentId: intent.id },
-      select: { id: true, slotId: true, durationMinutes: true },
+      include: { slot: true },
     })
     if (session) {
-      const releaseOps = [
+      const endTimeLimit = new Date(session.slot.startTime.getTime() + session.durationMinutes * 60000)
+      await prisma.$transaction([
         prisma.session.update({
           where: { id: session.id },
           data: { paymentStatus: 'failed', status: 'cancelled' },
         }),
-        prisma.availabilitySlot.update({
-          where: { id: session.slotId },
+        prisma.availabilitySlot.updateMany({
+          where: {
+            consultantId: session.consultantId,
+            startTime: { gte: session.slot.startTime, lt: endTimeLimit },
+          },
           data: { isBooked: false },
         }),
-      ]
-      if (session.durationMinutes === 120) {
-        const primarySlot = await prisma.availabilitySlot.findUnique({ where: { id: session.slotId } })
-        if (primarySlot) {
-          const nextSlot = await prisma.availabilitySlot.findFirst({
-            where: { consultantId: primarySlot.consultantId, startTime: primarySlot.endTime },
-          })
-          if (nextSlot) {
-            releaseOps.push(prisma.availabilitySlot.update({ where: { id: nextSlot.id }, data: { isBooked: false } }))
-          }
-        }
-      }
-      await prisma.$transaction(releaseOps)
+      ])
     }
   }
 

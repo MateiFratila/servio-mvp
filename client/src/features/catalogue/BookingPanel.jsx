@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useDispatch } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { PaymentElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js'
 import stripePromise from '../../lib/stripe'
 import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation, useUploadDocumentMutation } from './catalogueApi'
@@ -23,6 +23,13 @@ function fmtSlotLabel(slot, durationH) {
   const start = new Date(slot.startTime)
   const end = new Date(start.getTime() + durationH * 60 * 60 * 1000)
   return `${fmtTime(start.toISOString())} – ${fmtTime(end.toISOString())}`
+}
+
+function dateKey(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 // Inner form rendered inside <Elements> once we have a clientSecret
@@ -69,13 +76,26 @@ function PaymentForm({ clientSecret, onSuccess, onCancel }) {
 export default function BookingPanel({ consultantId, consultantName }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const t = useLabels()
   const fileInputRef = useRef(null)
   
-  // Step 1 states
-  const [selectedDate, setSelectedDate] = useState('')
-  const [selectedDuration, setSelectedDuration] = useState(null) // '1' | '2'
+  // Step 1 states (Single-date / Month Calendar view)
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
+  const [currentMonth, setCurrentMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const y = today.getFullYear()
+    const m = String(today.getMonth() + 1).padStart(2, '0')
+    const d = String(today.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  })
   const [selectedSlotId, setSelectedSlotId] = useState(null)
+  const [selectedDurationMinutes, setSelectedDurationMinutes] = useState(30) // 30 | 60 | 90 | 120
   
   // Step 2 modal states
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -98,16 +118,67 @@ export default function BookingPanel({ consultantId, consultantName }) {
   const [intentError, setIntentError] = useState('')
   const [uploadError, setUploadError] = useState('')
 
+  // Derive target start (1st day) and end (last day) dates of currentMonth
+  const startDate = dateKey(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1))
+  const endDate = dateKey(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0))
+
   const { data: slots = [], isFetching: slotsLoading, error } = useGetConsultantSlotsQuery(
-    { consultantId, date: selectedDate, duration: selectedDuration },
-    { skip: !selectedDate || !selectedDuration }
+    { consultantId, startDate, endDate },
+    { skip: !startDate || !endDate }
   )
 
   const [createPaymentIntent, { isLoading: creatingIntent }] = useCreatePaymentIntentMutation()
   const [uploadDocument] = useUploadDocumentMutation()
 
+  // Retrieve current active slot object
+  const selectedSlot = useMemo(() => {
+    return slots.find((s) => s.id === selectedSlotId)
+  }, [selectedSlotId, slots])
+
+  // Look-ahead consecutive slots verification logic
+  function isSlotAvailableForDuration(slot, durationMin, allSlots) {
+    const startMs = new Date(slot.startTime).getTime()
+    const stepMs = 30 * 60 * 1000
+    const slotsNeeded = durationMin / 30
+
+    // Create a Set of all available slot start times for fast lookup
+    const allStartTimes = new Set(allSlots.map(s => new Date(s.startTime).getTime()))
+
+    for (let i = 0; i < slotsNeeded; i++) {
+      if (!allStartTimes.has(startMs + i * stepMs)) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Filter slots for the selected date that fit the selected duration
+  const availableSlotsOnSelectedDate = useMemo(() => {
+    if (!selectedDate || slots.length === 0) return []
+    return slots.filter((slot) => {
+      const slotDateStr = dateKey(new Date(slot.startTime))
+      if (slotDateStr !== selectedDate) return false
+      
+      const isPast = new Date(slot.startTime) < new Date()
+      if (isPast) return false
+
+      return isSlotAvailableForDuration(slot, selectedDurationMinutes, slots)
+    })
+  }, [selectedDate, selectedDurationMinutes, slots])
+
+  // Month navigation handlers
+  function handlePrevMonth() {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+    setSelectedSlotId(null)
+  }
+
+  function handleNextMonth() {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+    setSelectedSlotId(null)
+  }
+
   async function handleProceedToPayment() {
-    if (!selectedSlotId) return
+    if (!selectedSlotId || !selectedDurationMinutes) return
     setIntentError('')
     setUploadError('')
     
@@ -146,7 +217,7 @@ export default function BookingPanel({ consultantId, consultantName }) {
         consultantId,
         slotId: selectedSlotId,
         notes,
-        duration: selectedDuration,
+        duration: selectedDurationMinutes / 60, // Fractional duration (e.g. 0.5, 1.0, 1.5, 2.0)
         billingInfo,
       }).unwrap()
 
@@ -179,20 +250,6 @@ export default function BookingPanel({ consultantId, consultantName }) {
     setFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
-  function handleDateChange(value) {
-    setSelectedDate(value)
-    setSelectedSlotId(null)
-    setIntentError('')
-    setUploadError('')
-    setClientSecret(null)
-  }
-
-  function handleDurationChange(value) {
-    setSelectedDuration(value)
-    setSelectedSlotId(null)
-    setIntentError('')
-  }
-
   function handleBack() {
     setClientSecret(null)
     setIntentError('')
@@ -204,18 +261,23 @@ export default function BookingPanel({ consultantId, consultantName }) {
       <div className="card">
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
-          <p style={{ fontWeight: 600 }}>Payment successful!</p>
+          <p style={{ fontWeight: 600 }}>Plată finalizată cu succes!</p>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-            Your session is confirmed. You'll find it under My Sessions.
+            Sesiunea ta a fost confirmată. O poți găsi în secțiunea Sesiunile mele.
           </p>
           <button
             className="btn btn-secondary btn-sm"
             style={{ marginTop: 16 }}
             onClick={() => {
               setConfirmed(false)
-              setSelectedDate('')
-              setSelectedDuration(null)
+              const today = new Date()
+              setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1))
+              const y = today.getFullYear()
+              const m = String(today.getMonth() + 1).padStart(2, '0')
+              const d = String(today.getDate()).padStart(2, '0')
+              setSelectedDate(`${y}-${m}-${d}`)
               setSelectedSlotId(null)
+              setSelectedDurationMinutes(30)
               setNotes('')
               setFiles([])
               setClientSecret(null)
@@ -230,100 +292,331 @@ export default function BookingPanel({ consultantId, consultantName }) {
               setBillingCompanyAddress('')
             }}
           >
-            Book another
+            Rezervă o altă sesiune
           </button>
         </div>
       </div>
     )
   }
 
+  const monthNames = [
+    'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
+    'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'
+  ]
+
+  const calendarGrid = useMemo(() => {
+    const year = currentMonth.getFullYear()
+    const month = currentMonth.getMonth()
+
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+
+    const numDays = lastDay.getDate()
+    const firstDayIndex = firstDay.getDay()
+    const firstDayOfWeek = firstDayIndex === 0 ? 6 : firstDayIndex - 1
+
+    const blanks = Array(firstDayOfWeek).fill(null)
+    const days = Array.from({ length: numDays }, (_, i) => i + 1)
+
+    return [...blanks, ...days]
+  }, [currentMonth])
+
   return (
     <>
       {/* Step 1: Mini-form (Main Component) */}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <h3 className="section-title" style={{ marginBottom: 0 }}>Book a session</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: -8 }}>with {consultantName}</p>
+        <h3 className="section-title" style={{ marginBottom: 0 }}>Rezervă o ședință</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: -8 }}>cu {consultantName}</p>
 
-        {/* Date picker */}
-        <div className="form-group">
-          <label htmlFor="session-date">Date</label>
-          <input
-            id="session-date"
-            type="date"
-            value={selectedDate}
-            min={new Date().toISOString().split('T')[0]}
-            onChange={(e) => handleDateChange(e.target.value)}
-          />
-        </div>
-
-        {/* Duration selector */}
-        <div className="form-group">
-          <label>Session duration</label>
-          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            {[['1', '1 hour'], ['2', '2 hours']].map(([val, label]) => (
-              <button
-                key={val}
-                type="button"
-                className={`slot-pill${selectedDuration === val ? ' selected' : ''}`}
-                onClick={() => handleDurationChange(val)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Available slots / Availability request/response */}
-        {selectedDate && selectedDuration && (
-          <div>
-            {error?.status === 401 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-                  {t.bookingPanel?.unauthorizedMsg || 'Trebuie să fii conectat pentru a vedea intervalele disponibile.'}
-                </p>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  style={{ width: '100%' }}
-                  onClick={() => navigate('/login')}
-                >
-                  {t.bookingPanel?.connectBtn || 'Conectează-te'}
-                </button>
-              </div>
-            ) : (
-              <>
-                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>Available times</div>
-                {slotsLoading ? (
-                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading slots…</p>
-                ) : slots.length === 0 ? (
-                  <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No available slots for this date and duration.</p>
-                ) : (
-                  <div className="slot-grid">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot.id}
-                        className={`slot-pill${selectedSlotId === slot.id ? ' selected' : ''}`}
-                        onClick={() => setSelectedSlotId(slot.id)}
-                      >
-                        {fmtSlotLabel(slot, parseInt(selectedDuration))}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+        {/* 1. Unauthorized Warning / Sign in connector */}
+        {error?.status === 401 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+              {t.bookingPanel?.unauthorizedMsg || 'Trebuie să fii conectat pentru a vedea intervalele disponibile.'}
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ width: '100%' }}
+              onClick={() => navigate('/login', { state: { from: location } })}
+            >
+              {t.bookingPanel?.connectBtn || 'Conectează-te'}
+            </button>
           </div>
         )}
 
         {error?.status !== 401 && (
-          <button
-            className="btn btn-primary"
-            style={{ marginTop: 8 }}
-            disabled={!selectedDate || !selectedDuration || !selectedSlotId}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Next Step
-          </button>
+          <>
+            {/* 2. Session Duration Selector */}
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+                Durată ședință / Duration
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                {[
+                  { min: 30, label: '30 min' },
+                  { min: 60, label: '1 ora' },
+                  { min: 90, label: '1.5 ore' },
+                  { min: 120, label: '2 ore' }
+                ].map(({ min, label }) => {
+                  const isSelected = selectedDurationMinutes === min
+                  return (
+                    <button
+                      key={min}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDurationMinutes(min)
+                        setSelectedSlotId(null)
+                      }}
+                      style={{
+                        padding: '8px 4px',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: '1px solid',
+                        borderColor: isSelected ? 'var(--accent-orange)' : 'var(--border, #e4e4e7)',
+                        background: isSelected ? 'var(--accent-orange)' : '#fff',
+                        color: isSelected ? 'var(--primary-dark)' : 'var(--text-main, #1c1917)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.1s ease'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 3. Month Picker / Calendar view */}
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Alege o dată / Select date
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: 12 }}
+                    onClick={handlePrevMonth}
+                    disabled={
+                      currentMonth.getFullYear() <= today.getFullYear() &&
+                      currentMonth.getMonth() <= today.getMonth()
+                    }
+                  >
+                    ←
+                  </button>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-main)', textTransform: 'capitalize', minWidth: 100, textAlign: 'center' }}>
+                    {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: 12 }}
+                    onClick={handleNextMonth}
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+
+              {/* Calendar Grid */}
+              <div style={{
+                border: '1px solid var(--border, #e4e4e7)',
+                borderRadius: 8,
+                padding: 10,
+                background: '#fff'
+              }}>
+                {/* Weekdays header */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, 1fr)',
+                  gap: 4,
+                  marginBottom: 6,
+                  textAlign: 'center'
+                }}>
+                  {['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sâ', 'Du'].map((day) => (
+                    <span key={day} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted, #71717a)' }}>
+                      {day}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Grid of days */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, 1fr)',
+                  gap: 4,
+                  textAlign: 'center'
+                }}>
+                  {slotsLoading ? (
+                    <div style={{ gridColumn: 'span 7', padding: '20px 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                      Se încarcă calendarul…
+                    </div>
+                  ) : (
+                    calendarGrid.map((dayNum, idx) => {
+                      if (dayNum === null) {
+                        return <div key={`empty-${idx}`} />
+                      }
+
+                      const dKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
+                      const isSelected = selectedDate === dKey
+
+                      // Determine if this day is in the past
+                      const cellDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), dayNum)
+                      const isPastDay = cellDate < today && cellDate.toDateString() !== today.toDateString()
+
+                      // Check if there is any slot for the selected duration on this day
+                      const hasAvailableSlots = slots.some((slot) => {
+                        const slotDateStr = dateKey(new Date(slot.startTime))
+                        if (slotDateStr !== dKey) return false
+                        const isPastSlot = new Date(slot.startTime) < today
+                        if (isPastSlot) return false
+                        return isSlotAvailableForDuration(slot, selectedDurationMinutes, slots)
+                      })
+
+                      const isDisabled = isPastDay || !hasAvailableSlots
+
+                      return (
+                        <button
+                          key={`day-${dayNum}`}
+                          type="button"
+                          disabled={isDisabled}
+                          title={isDisabled ? "Indisponibil" : undefined}
+                          onClick={() => {
+                            setSelectedDate(dKey)
+                            setSelectedSlotId(null)
+                          }}
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            margin: 'auto',
+                            padding: 0,
+                            fontSize: 13,
+                            fontWeight: isSelected ? '600' : '500',
+                            borderRadius: '50%',
+                            border: '1px solid',
+                            borderColor: isSelected ? 'var(--accent-orange)' : 'transparent',
+                            background: isSelected
+                              ? 'var(--accent-orange)'
+                              : 'transparent',
+                            color: isSelected
+                              ? 'var(--primary-dark)'
+                              : isDisabled
+                              ? 'var(--text-muted, #a1a1aa)'
+                              : 'var(--text-main, #18181b)',
+                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                            opacity: isDisabled ? 0.35 : 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {dayNum}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Available Times List */}
+            {selectedDate && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Intervale disponibile / Available times
+                </label>
+                {slotsLoading ? (
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', margin: '12px 0' }}>
+                    Se încarcă orele disponibile…
+                  </p>
+                ) : availableSlotsOnSelectedDate.length === 0 ? (
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>
+                    Niciun interval de {selectedDurationMinutes} min disponibil / No slots available.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, maxHeight: 160, overflowY: 'auto', paddingRight: 4 }}>
+                    {availableSlotsOnSelectedDate.map((s) => {
+                      const startStr = new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      const endStr = new Date(new Date(s.startTime).getTime() + selectedDurationMinutes * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      
+                      const isSelected = selectedSlotId === s.id
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setSelectedSlotId(s.id)}
+                          style={{
+                            padding: '6px 10px',
+                            fontSize: 13,
+                            fontWeight: isSelected ? '600' : '500',
+                            borderRadius: 6,
+                            border: '1px solid',
+                            borderColor: isSelected ? 'var(--accent-orange)' : 'var(--border, #e4e4e7)',
+                            background: isSelected ? 'var(--accent-orange)' : '#fff',
+                            color: isSelected ? 'var(--primary-dark)' : 'var(--text-main)',
+                            cursor: 'pointer',
+                            transition: 'all 0.1s ease'
+                          }}
+                        >
+                          {startStr} – {endStr}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {error?.status !== 401 && (
+          <>
+            {selectedSlotId && selectedDurationMinutes && (() => {
+              const startVal = new Date(selectedSlot.startTime)
+              const [y, m, d] = selectedDate.split('-')
+              const fmtDate = `${d}.${m}.${y}`
+              const startStr = startVal.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              const durationMapping = {
+                30: '30 min',
+                60: '1 ora',
+                90: '1.5 ore',
+                120: '2 ore'
+              }
+              const fmtDuration = durationMapping[selectedDurationMinutes] || `${selectedDurationMinutes} min`
+              return (
+                <div style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: 'var(--text-main, #1c1917)',
+                  background: 'var(--grey-bg, #f1f5f9)',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border, #e2e8f0)',
+                  textAlign: 'center',
+                  marginTop: 4,
+                  lineHeight: '1.4'
+                }}>
+                  Rezervare făcută în {fmtDate}, ora {startStr}, pentru {fmtDuration}.
+                </div>
+              )
+            })()}
+
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: 8 }}
+              disabled={!selectedSlotId || !selectedDurationMinutes}
+              onClick={() => setIsModalOpen(true)}
+            >
+              Continuă / Next Step
+            </button>
+          </>
         )}
       </div>
 
@@ -357,7 +650,7 @@ export default function BookingPanel({ consultantId, consultantName }) {
             {/* Modal Heading */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f4f4f5', paddingBottom: 12 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-                {clientSecret ? 'Payment Step' : 'Billing & Session Information'}
+                {clientSecret ? 'Pasul 3: Plată / Payment' : 'Pasul 2: Date Facturare & Detalii / Information'}
               </h3>
               <button
                 type="button"

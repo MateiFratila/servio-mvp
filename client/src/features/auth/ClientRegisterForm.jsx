@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useDispatch } from 'react-redux'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { setCredentials } from './authSlice'
 import { useRegisterMutation } from './authApi'
 
 export default function ClientRegisterForm({ onToggleLogin }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const [register, { isLoading }] = useRegisterMutation()
 
   const [form, setForm] = useState({ email: '', password: '', confirm: '' })
@@ -36,7 +37,9 @@ export default function ClientRegisterForm({ onToggleLogin }) {
     try {
       const result = await register({ email: form.email, password: form.password }).unwrap()
       dispatch(setCredentials({ user: result.user, token: result.token }))
-      navigate('/acasa', { replace: true })
+      
+      const from = location.state?.from || '/acasa'
+      navigate(from, { replace: true })
     } catch (err) {
       setError(err?.data?.error ?? 'Înregistrarea a eșuat. Încearcă din nou.')
     }

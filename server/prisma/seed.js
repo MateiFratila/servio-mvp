@@ -25,20 +25,23 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: 'lorem@servio.dev' },
-      update: {},
+      update: { phone: '+40722123456', isEmailConfirmed: true },
       create: {
         email: 'lorem@servio.dev',
         passwordHash: await bcrypt.hash('consultant1234', 12),
+        phone: '+40722123456',
         role: 'consultant',
+        isEmailConfirmed: true,
       },
     }),
     prisma.user.upsert({
       where: { email: 'dolor@servio.dev' },
-      update: {},
+      update: { phone: '+40733987654' },
       create: {
         email: 'dolor@servio.dev',
         passwordHash: await bcrypt.hash('consultant1234', 12),
         role: 'consultant',
+        phone: '+40733987654',
       },
     }),
     prisma.user.upsert({
@@ -167,7 +170,9 @@ async function main() {
   const [profile1, profile2] = await Promise.all([
     prisma.consultantProfile.upsert({
       where: { userId: consultant1.id },
-      update: {},
+      update: {
+        stripeOnboardingComplete: true,
+      },
       create: {
         userId: consultant1.id,
         displayName: 'Lorem Ipsum',
@@ -175,6 +180,8 @@ async function main() {
         hourlyRate: 90,
         isActive: true,
         languages: ['en', 'ro'],
+        stripeOnboardingComplete: true,
+        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
       },
     }),
     prisma.consultantProfile.upsert({
@@ -238,7 +245,7 @@ async function main() {
   }
 
   // ── Availability slots (next 14 days at fixed times) ────────────────────
-  const slotTimes = [9, 10, 11, 12, 13, 14, 15, 16, 17] // hours (1h slots, back-to-back)
+  const slotTimes = [9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17, 17.5] // hours (30m slots, back-to-back)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -250,7 +257,7 @@ async function main() {
         start.setDate(today.getDate() + day)
         start.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0)
         const end = new Date(start)
-        end.setMinutes(end.getMinutes() + 60)
+        end.setMinutes(end.getMinutes() + 30)
         slotData.push({ consultantId: profile.id, startTime: start, endTime: end, isBooked: false })
       }
     }

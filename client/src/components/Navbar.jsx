@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate, NavLink } from 'react-router-dom'
+import { useNavigate, NavLink, useLocation } from 'react-router-dom'
 import { logout, selectCurrentUser, selectCurrentRole } from '../features/auth/authSlice'
 import { useLogoutApiMutation } from '../features/auth/authApi'
 import { setLanguage, selectLanguage } from '../features/lang/langSlice'
@@ -8,6 +8,7 @@ import { useLabels } from '../lib/useLabels'
 export default function Navbar() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const [logoutApi] = useLogoutApiMutation()
   const user = useSelector(selectCurrentUser)
   const role = useSelector(selectCurrentRole)
@@ -89,7 +90,7 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => navigate('/login')}>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('/login', { state: { from: location } })}>
               {t.nav.signIn}
             </button>
           )}

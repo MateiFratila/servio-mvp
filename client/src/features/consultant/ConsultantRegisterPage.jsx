@@ -20,7 +20,7 @@ export default function ConsultantRegisterPage() {
     e.preventDefault()
     setError('')
 
-    if (!form.email || !form.password || !form.confirm) {
+    if (!form.email || !form.phone || !form.password || !form.confirm) {
       setError('Completează toate câmpurile obligatorii.')
       return
     }
@@ -84,7 +84,7 @@ export default function ConsultantRegisterPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="phone">Număr de telefon</label>
+            <label htmlFor="phone">Număr de telefon <span style={{ color: 'var(--red)' }}>*</span></label>
             <input
               id="phone"
               type="tel"

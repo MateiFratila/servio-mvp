@@ -15,13 +15,20 @@ import {
   selectAvailabilityMacroScope,
 } from './availabilitySlice'
 
-const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
-const SLOT_DURATION_MIN = 60
+const TIME_SLOTS = [
+  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+  '17:00', '17:30'
+]
+const SLOT_DURATION_MIN = 30
 const MAX_WEEKS = 13 // fiscal quarter (~3 months)
 const EMPTY_ARRAY = []
 
-// Slots covered by the "9–17" macro: 09:00 start (1hr) through 16:00 start (ends 17:00)
-const MACRO_917_SLOTS = TIME_SLOTS.filter((t) => parseInt(t, 10) < 17)
+// Slots covered by the "9-17" macro (start hours >= 9 and < 17)
+const MACRO_917_SLOTS = TIME_SLOTS.filter((t) => {
+  const [h] = t.split(':').map(Number)
+  return h >= 9 && h < 17
+})
 
 function getMonday(weekOffset = 0) {
   const now = new Date()
@@ -43,7 +50,10 @@ function getWeekDates(weekOffset) {
 }
 
 function dateKey(date) {
-  return date.toISOString().split('T')[0]
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function slotISO(date, timeStr) {

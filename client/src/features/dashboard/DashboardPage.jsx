@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
 import { selectCurrentUser } from '../../features/auth/authSlice'
 import { useLabels } from '../../lib/useLabels'
+import { useGetMyProfileQuery } from './dashboardApi'
 import OverviewTab from './OverviewTab'
 import SessionsTab from './SessionsTab'
 import AvailabilityTab from './AvailabilityTab'
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('overview')
   const t = useLabels()
+  const { data: profile } = useGetMyProfileQuery()
 
   useEffect(() => {
     const tabParam = searchParams.get('tab')
@@ -38,6 +40,42 @@ export default function DashboardPage() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {profile && profile.accountComplete && !profile.hasCurrentAvailability && (
+        <div style={{
+          background: 'var(--red-bg)',
+          color: 'var(--red)',
+          borderBottom: '1px solid #fca5a5',
+          padding: '12px 24px',
+          fontSize: '14px',
+          fontWeight: '500',
+          textAlign: 'center'
+        }}>
+          Clientii nu va pot rezerva, nu aveti nici un slot disponibil. Completati calendarul de Disponibilitate{' '}
+          <button
+            onClick={() => {
+              setSearchParams((prev) => {
+                const newParams = new URLSearchParams(prev)
+                newParams.set('tab', 'availability')
+                return newParams
+              })
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: 'var(--red)',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              fontWeight: '700',
+              fontFamily: 'inherit',
+              fontSize: 'inherit'
+            }}
+          >
+            aici
+          </button>.
+        </div>
+      )}
+
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="container">
           <div className="tab-bar" style={{ marginBottom: 0 }}>

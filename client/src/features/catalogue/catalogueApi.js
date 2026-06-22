@@ -18,8 +18,12 @@ export const catalogueApi = api.injectEndpoints({
       providesTags: (_res, _err, id) => [{ type: 'Consultant', id }],
     }),
     getConsultantSlots: build.query({
-      query: ({ consultantId, date, duration = 1 }) =>
-        `/consultants/${consultantId}/slots?date=${date}&duration=${duration}`,
+      query: ({ consultantId, date, startDate, endDate }) => {
+        if (startDate && endDate) {
+          return `/consultants/${consultantId}/slots?startDate=${startDate}&endDate=${endDate}`
+        }
+        return `/consultants/${consultantId}/slots?date=${date}`
+      },
       providesTags: ['Slot'],
     }),
     getMySessionsAsClient: build.query({

@@ -603,6 +603,11 @@ export default function ProfileTab() {
               value={form.hourlyRate}
               onChange={(e) => handleChange('hourlyRate', Number(e.target.value))}
             />
+            {(!form.hourlyRate || Number(form.hourlyRate) === 0) && (
+              <p style={{ fontSize: 12, color: 'var(--text-muted, #71717a)', marginTop: 4, margin: '4px 0 0 0' }}>
+                💡 30% din tariful afișat va fi reținut de Servio - comision de administrare -
+              </p>
+            )}
           </div>
 
           <div className="form-group">

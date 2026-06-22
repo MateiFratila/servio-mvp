@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 
 const benefits = [
   {
@@ -41,6 +41,7 @@ const steps = [
 
 export default function ConsultantLandingPage() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
@@ -190,7 +191,7 @@ export default function ConsultantLandingPage() {
       <div style={{ borderTop: '1px solid var(--border)', padding: '24px 24px', textAlign: 'center', background: 'var(--bg)' }}>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           Ai deja cont?{' '}
-          <a href="/login" style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Autentifică-te</a>
+          <Link to="/login" state={{ from: location }} style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Autentifică-te</Link>
         </p>
       </div>
     </div>

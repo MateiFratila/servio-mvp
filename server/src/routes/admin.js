@@ -84,6 +84,13 @@ router.get('/consultants', async (_req, res, next) => {
         user: { select: { email: true, phone: true, isEmailConfirmed: true } },
         _count: {
           select: { availabilitySlots: true }
+        },
+        availabilitySlots: {
+          where: {
+            startTime: { gte: new Date() },
+            isBooked: false,
+          },
+          select: { id: true }
         }
       },
       orderBy: { displayName: 'asc' },
@@ -94,6 +101,7 @@ router.get('/consultants', async (_req, res, next) => {
       const isEmailConfirmed = !!profile.user?.isEmailConfirmed
       const isHourlyRateSet = parseFloat(profile.hourlyRate) > 0
       const isAvailabilitySet = slotsCount > 0
+      const hasCurrentAvailability = profile.availabilitySlots?.length > 0
       const isStripeOnboarded = !!profile.stripeOnboardingComplete
       const isProfileSetupComplete = !!(
         profile.description &&
@@ -110,11 +118,16 @@ router.get('/consultants', async (_req, res, next) => {
         isStripeOnboarded &&
         isProfileSetupComplete
 
+      // Remove the full availabilitySlots array to keep payload neat
+      const mappedProfile = { ...profile }
+      delete mappedProfile.availabilitySlots
+
       return {
-        ...profile,
+        ...mappedProfile,
         isEmailConfirmed,
         isHourlyRateSet,
         isAvailabilitySet,
+        hasCurrentAvailability,
         isStripeOnboarded,
         isProfileSetupComplete,
         accountComplete,

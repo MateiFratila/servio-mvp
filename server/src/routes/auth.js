@@ -123,8 +123,8 @@ router.post('/register', async (req, res, next) => {
 router.post('/register/consultant', async (req, res, next) => {
   try {
     const { email, password, phone } = req.body
-    if (!email || !password) {
-      return res.status(400).json({ error: 'email and password are required' })
+    if (!email || !password || !phone || typeof phone !== 'string' || !phone.trim()) {
+      return res.status(400).json({ error: 'Email, password, and phone number are required' })
     }
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' })
@@ -143,7 +143,7 @@ router.post('/register/consultant', async (req, res, next) => {
       data: {
         email,
         passwordHash,
-        phone: phone || null,
+        phone: phone.trim(),
         role: 'consultant',
         isEmailConfirmed: false,
         emailConfirmationToken,

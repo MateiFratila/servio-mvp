@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useDispatch } from 'react-redux'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { setCredentials } from './authSlice'
 import { useLoginMutation, useForgotPasswordMutation } from './authApi'
 import { useLabels } from '../../lib/useLabels'
@@ -9,6 +9,7 @@ import ClientRegisterForm from './ClientRegisterForm'
 export default function LoginPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const [login, { isLoading }] = useLoginMutation()
   const [sendResetEmail, { isLoading: isSendingForgot }] = useForgotPasswordMutation()
   const t = useLabels()
@@ -32,7 +33,9 @@ export default function LoginPage() {
     try {
       const result = await login({ email, password }).unwrap()
       dispatch(setCredentials({ user: result.user, token: result.token }))
-      navigate('/acasa', { replace: true })
+      
+      const from = location.state?.from || '/acasa'
+      navigate(from, { replace: true })
     } catch (err) {
       setError(err?.data?.error ?? t.login.errorFailed)
     }

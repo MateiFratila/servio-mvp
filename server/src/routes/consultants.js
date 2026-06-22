@@ -200,9 +200,18 @@ router.get('/me', authenticate, authorize('consultant', 'admin'), async (req, re
       where: { consultantId: profile.id },
     })
 
+    const futureSlotsCount = await prisma.availabilitySlot.count({
+      where: {
+        consultantId: profile.id,
+        startTime: { gte: new Date() },
+        isBooked: false,
+      },
+    })
+
     const isEmailConfirmed = !!profile.user?.isEmailConfirmed
     const isHourlyRateSet = parseFloat(profile.hourlyRate) > 0
     const isAvailabilitySet = slotsCount > 0
+    const hasCurrentAvailability = futureSlotsCount > 0
     const isStripeOnboarded = !!profile.stripeOnboardingComplete
     const isProfileSetupComplete = !!(
       profile.description &&
@@ -225,6 +234,7 @@ router.get('/me', authenticate, authorize('consultant', 'admin'), async (req, re
       isEmailConfirmed,
       isHourlyRateSet,
       isAvailabilitySet,
+      hasCurrentAvailability,
       isStripeOnboarded,
       isProfileSetupComplete,
       accountComplete,
@@ -513,38 +523,40 @@ router.put('/me/slots', authenticate, authorize('consultant', 'admin'), async (r
   }
 })
 
-// GET /api/consultants/:id/slots?date=YYYY-MM-DD[&duration=1|2]
-// Returns available start slots for the given duration:
-//   duration=1 (default) — any available 1h slot
-//   duration=2 — only slots where the immediately consecutive 1h slot is also available
+// GET /api/consultants/:id/slots?date=YYYY-MM-DD or ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+// Returns available start slots.
 router.get('/:id/slots', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const { date, duration = '1' } = req.query
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ error: 'date query param required (YYYY-MM-DD)' })
-    }
-    const durationHours = parseInt(duration) === 2 ? 2 : 1
+    const { date, startDate, endDate } = req.query
+    let gte, lte
 
-    const dayStart = new Date(`${date}T00:00:00.000Z`)
-    const dayEnd = new Date(`${date}T23:59:59.999Z`)
+    if (startDate && endDate) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        return res.status(400).json({ error: 'startDate and endDate must be YYYY-MM-DD' })
+      }
+      gte = new Date(`${startDate}T00:00:00.000Z`)
+      lte = new Date(`${endDate}T23:59:59.999Z`)
+    } else if (date) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ error: 'date query param required (YYYY-MM-DD)' })
+      }
+      gte = new Date(`${date}T00:00:00.000Z`)
+      lte = new Date(`${date}T23:59:59.999Z`)
+    } else {
+      return res.status(400).json({ error: 'date or (startDate and endDate) query param required' })
+    }
 
     const slots = await prisma.availabilitySlot.findMany({
       where: {
         consultantId: id,
         isBooked: false,
-        startTime: { gte: dayStart, lte: dayEnd },
+        startTime: { gte, lte },
       },
       orderBy: { startTime: 'asc' },
     })
-
-    if (durationHours === 2) {
-      // Only return start slots where the consecutive next 1h slot is also available
-      const availableStartMs = new Set(slots.map((s) => s.startTime.getTime()))
-      return res.json(slots.filter((slot) => availableStartMs.has(slot.endTime.getTime())))
-    }
 
     res.json(slots)
   } catch (err) {

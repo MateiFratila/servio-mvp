@@ -166,7 +166,7 @@ model Session {
   clientId              Int           @map("client_id")
   consultantId          Int           @map("consultant_id")
   slotId                Int           @unique @map("slot_id")
-  durationMinutes       Int           @default(60) @map("duration_minutes")
+  durationMinutes       Int           @default(30) @map("duration_minutes")
   status                SessionStatus @default(pending)
   notes                 String?       @db.Text
   stripePaymentIntentId String?       @map("stripe_payment_intent_id")

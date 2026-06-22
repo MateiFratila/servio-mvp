@@ -235,6 +235,8 @@ export default function SessionDetailPage() {
   const canContactClient = (role === 'consultant' || role === 'admin' || role === 'client') &&
     (session.status === 'pending_confirmation' || session.status === 'ping_pong' || session.status === 'confirmed')
 
+  const isPingPong = session?.status === 'ping_pong'
+
   const isClientBooker = session?.clientId === currentUser?.id
   const startPassed = session?.slot?.startTime ? (new Date() > new Date(session.slot.startTime)) : false
   const hasReview = !!session?.review
@@ -273,9 +275,15 @@ export default function SessionDetailPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div className="card" style={{ maxWidth: 480, width: '90%', padding: 28, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
-            <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>Request Additional Info</h3>
+            <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
+              {isPingPong ? 'Reply' : 'Request Additional Info'}
+            </h3>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 18 }}>
-              Send a message or attach a file. The session will enter <strong>Info Requested</strong> state.
+              {isPingPong ? (
+                'Send a reply to the ongoing discussion.'
+              ) : (
+                <>Send a message or attach a file. The session will enter <strong>Info Requested</strong> state.</>
+              )}
             </p>
             <textarea
               rows={4}
@@ -323,7 +331,7 @@ export default function SessionDetailPage() {
                 Cancel
               </button>
               <button className="btn btn-primary" onClick={handleContactSubmit} disabled={contacting}>
-                {contacting ? 'Sending…' : 'Send & Request Info'}
+                {contacting ? 'Sending…' : (isPingPong ? 'Send Reply' : 'Send & Request Info')}
               </button>
             </div>
           </div>
@@ -417,6 +425,40 @@ export default function SessionDetailPage() {
         )}
       </div>
 
+      {/* Action Card */}
+      {(canConfirm || canContactClient || canCancel) && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {canConfirm && (
+              <button
+                className="btn btn-primary"
+                disabled={confirming}
+                onClick={() => setShowConfirmModal(true)}
+              >
+                Confirm Session
+              </button>
+            )}
+            {canContactClient && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => { setContactError(null); setShowContactModal(true) }}
+              >
+                {isPingPong ? 'Reply' : 'Request Additional Info'}
+              </button>
+            )}
+            {canCancel && (
+              <button
+                className="btn btn-danger"
+                disabled={cancelling || confirming}
+                onClick={() => setShowCancelModal(true)}
+              >
+                Cancel Session
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Documents</h3>
         {docsLoading ? (
@@ -492,36 +534,15 @@ export default function SessionDetailPage() {
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {(canConfirm || canContactClient || canCancel) && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          {canConfirm && (
-            <button
-              className="btn btn-primary"
-              disabled={confirming}
-              onClick={() => setShowConfirmModal(true)}
-            >
-              Confirm Session
-            </button>
-          )}
-          {canContactClient && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => { setContactError(null); setShowContactModal(true) }}
-            >
-              Request Additional Info
-            </button>
-          )}
-          {canCancel && (
-            <button
-              className="btn btn-danger"
-              disabled={cancelling || confirming}
-              onClick={() => setShowCancelModal(true)}
-            >
-              Cancel Session
-            </button>
+          {isPingPong && canContactClient && (
+            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => { setContactError(null); setShowContactModal(true) }}
+              >
+                Reply
+              </button>
+            </div>
           )}
         </div>
       )}

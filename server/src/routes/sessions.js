@@ -230,8 +230,8 @@ router.patch('/:id', authorize('consultant', 'admin'), async (req, res, next) =>
           clientEmail: updated.client.email,
           clientName: updated.client.email,
           consultantName: updated.consultant.displayName,
-          sessionDate: startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' }),
-          sessionTime: startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
+          sessionDate: startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' }),
+          sessionTime: startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }),
           bookingUrl: `${appUrl}/sessions/${updated.id}`,
         })
       } catch (err) {
@@ -301,31 +301,25 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     // Free the availability slot(s) so they can be rebooked
+    const endTimeLimit = new Date(existing.slot.startTime.getTime() + existing.durationMinutes * 60000)
     const cancelOps = [
       prisma.session.update({ where: { id }, data: { status: 'cancelled' } }),
-      prisma.availabilitySlot.update({ where: { id: existing.slotId }, data: { isBooked: false } }),
+      prisma.availabilitySlot.updateMany({
+        where: {
+          consultantId: existing.consultantId,
+          startTime: { gte: existing.slot.startTime, lt: endTimeLimit },
+        },
+        data: { isBooked: false },
+      }),
     ]
-
-    // For 2h sessions, also release the consecutive second slot
-    if (existing.durationMinutes === 120) {
-      const primarySlot = await prisma.availabilitySlot.findUnique({ where: { id: existing.slotId } })
-      if (primarySlot) {
-        const nextSlot = await prisma.availabilitySlot.findFirst({
-          where: { consultantId: primarySlot.consultantId, startTime: primarySlot.endTime, isBooked: true },
-        })
-        if (nextSlot) {
-          cancelOps.push(prisma.availabilitySlot.update({ where: { id: nextSlot.id }, data: { isBooked: false } }))
-        }
-      }
-    }
 
     await prisma.$transaction(cancelOps)
 
     // Notify both parties of the cancellation — only if the session was paid
     if (existing.paymentStatus === 'paid') {
       const startTime = new Date(existing.slot.startTime)
-      const sessionDate = startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' })
-      const sessionTime = startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
+      const sessionDate = startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' })
+      const sessionTime = startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
       const refunded = true
 
       try {
