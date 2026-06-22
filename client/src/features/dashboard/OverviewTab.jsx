@@ -26,6 +26,8 @@ export default function OverviewTab({ consultantName }) {
   const now = new Date()
   const upcoming = allSessions
     .filter((s) => s.status !== 'cancelled' && s.status !== 'completed' && new Date(s.slot?.startTime) >= now)
+    .slice()
+    .sort((a, b) => new Date(a.slot?.startTime) - new Date(b.slot?.startTime))
     .slice(0, 3)
 
   const pending = allSessions.filter((s) => s.status === 'pending_confirmation').length

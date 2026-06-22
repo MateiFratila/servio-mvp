@@ -139,6 +139,10 @@ router.post('/register/consultant', async (req, res, next) => {
     const crypto = require('crypto')
     const emailConfirmationToken = crypto.randomBytes(32).toString('hex')
 
+    const defaultDisplayName = email.split('@')[0]
+    const { generateUniqueSlug } = require('../lib/slugify')
+    const defaultSlug = await generateUniqueSlug(defaultDisplayName)
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -149,7 +153,8 @@ router.post('/register/consultant', async (req, res, next) => {
         emailConfirmationToken,
         profile: {
           create: {
-            displayName: email.split('@')[0],
+            displayName: defaultDisplayName,
+            slug: defaultSlug,
             hourlyRate: 0,
             isActive: false,
           },

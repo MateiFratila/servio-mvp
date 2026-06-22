@@ -50,7 +50,7 @@ export default function DashboardPage() {
           fontWeight: '500',
           textAlign: 'center'
         }}>
-          Clientii nu va pot rezerva, nu aveti nici un slot disponibil. Completati calendarul de Disponibilitate{' '}
+          Clienții nu vă pot rezerva, nu aveți nici un slot disponibil. Completați calendarul de disponibilitate{' '}
           <button
             onClick={() => {
               setSearchParams((prev) => {

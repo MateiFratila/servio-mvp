@@ -48,6 +48,7 @@ function runImageUpload(req, res) {
 const CONSULTANT_SELECT = {
   id: true,
   displayName: true,
+  slug: true,
   description: true,
   hourlyRate: true,
   avatarUrl: true,
@@ -70,6 +71,18 @@ const CONSULTANT_SELECT = {
     select: { category: { select: { id: true, name: true, slug: true, specialisationId: true } } },
   },
   tags: { select: { id: true, tag: true } },
+}
+
+async function resolveConsultantId(idOrSlug) {
+  const id = parseInt(idOrSlug)
+  if (!isNaN(id) && String(id) === String(idOrSlug)) {
+    return id
+  }
+  const profile = await prisma.consultantProfile.findUnique({
+    where: { slug: idOrSlug },
+    select: { id: true },
+  })
+  return profile ? profile.id : null
 }
 
 // GET /api/consultants — paginated + filtered list (public catalogue)
@@ -340,7 +353,11 @@ router.patch('/me', authenticate, authorize('consultant', 'admin'), async (req, 
     const { displayName, description, hourlyRate, languages, specialisationIds, categoryIds, tags } = req.body
 
     const data = {}
-    if (displayName !== undefined) data.displayName = String(displayName).trim()
+    if (displayName !== undefined) {
+      data.displayName = String(displayName).trim()
+      const { generateUniqueSlug } = require('../lib/slugify')
+      data.slug = await generateUniqueSlug(data.displayName, profile.id)
+    }
     if (description !== undefined) data.description = description
     if (hourlyRate !== undefined) data.hourlyRate = parseFloat(hourlyRate)
     if (languages !== undefined) {
@@ -527,8 +544,8 @@ router.put('/me/slots', authenticate, authorize('consultant', 'admin'), async (r
 // Returns available start slots.
 router.get('/:id/slots', authenticate, async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id)
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+    const id = await resolveConsultantId(req.params.id)
+    if (!id) return res.status(404).json({ error: 'Consultant not found' })
 
     const { date, startDate, endDate } = req.query
     let gte, lte
@@ -567,8 +584,8 @@ router.get('/:id/slots', authenticate, async (req, res, next) => {
 // GET /api/consultants/:id/avatar — proxy-stream the consultant's avatar image
 router.get('/:id/avatar', async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id)
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+    const id = await resolveConsultantId(req.params.id)
+    if (!id) return res.status(404).end()
     const profile = await prisma.consultantProfile.findUnique({
       where: { id },
       select: { avatarBlobName: true },
@@ -583,8 +600,8 @@ router.get('/:id/avatar', async (req, res, next) => {
 // GET /api/consultants/:id/banner — proxy-stream the consultant's banner image
 router.get('/:id/banner', async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id)
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+    const id = await resolveConsultantId(req.params.id)
+    if (!id) return res.status(404).end()
     const profile = await prisma.consultantProfile.findUnique({
       where: { id },
       select: { bannerBlobName: true },
@@ -599,8 +616,8 @@ router.get('/:id/banner', async (req, res, next) => {
 // GET /api/consultants/:id/reviews — public reviews for a consultant profile
 router.get('/:id/reviews', async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id)
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+    const id = await resolveConsultantId(req.params.id)
+    if (!id) return res.status(404).json({ error: 'Consultant not found' })
 
     const reviews = await prisma.review.findMany({
       where: { consultantId: id },
@@ -630,8 +647,8 @@ router.get('/:id/reviews', async (req, res, next) => {
 // GET /api/consultants/:id — single consultant profile
 router.get('/:id', optionalAuthenticate, async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id)
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+    const id = await resolveConsultantId(req.params.id)
+    if (!id) return res.status(404).json({ error: 'Consultant not found' })
 
     const consultant = await prisma.consultantProfile.findUnique({
       where: { id },
@@ -648,13 +665,17 @@ router.get('/:id', optionalAuthenticate, async (req, res, next) => {
 // PATCH /api/consultants/:id — admin only: update consultant profile
 router.patch('/:id', authenticate, authorize('admin'), async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id)
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
+    const id = await resolveConsultantId(req.params.id)
+    if (!id) return res.status(404).json({ error: 'Consultant not found' })
 
     const { displayName, description, hourlyRate, isActive, platformFeePct } = req.body
     const data = {}
 
-    if (displayName !== undefined) data.displayName = displayName
+    if (displayName !== undefined) {
+      data.displayName = displayName
+      const { generateUniqueSlug } = require('../lib/slugify')
+      data.slug = await generateUniqueSlug(displayName, id)
+    }
     if (description !== undefined) data.description = description
     if (hourlyRate !== undefined) data.hourlyRate = parseFloat(hourlyRate)
     if (isActive !== undefined) data.isActive = Boolean(isActive)

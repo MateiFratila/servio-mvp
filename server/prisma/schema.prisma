@@ -60,6 +60,7 @@ model ConsultantProfile {
   id             Int      @id @default(autoincrement())
   userId         Int      @unique @map("user_id")
   displayName    String   @map("display_name")
+  slug           String?  @unique @map("slug")
   description    String?  @db.Text
   hourlyRate     Decimal  @map("hourly_rate") @db.Decimal(10, 2)
   avatarUrl                String?  @map("avatar_url")

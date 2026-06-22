@@ -36,7 +36,7 @@ export const dashboardApi = api.injectEndpoints({
     }),
     updateMySlots: build.mutation({
       query: (body) => ({ url: '/consultants/me/slots', method: 'PUT', body }),
-      invalidatesTags: ['Slot'],
+      invalidatesTags: ['Slot', 'User'],
     }),
     updateSessionStatus: build.mutation({
       query: ({ id, ...body }) => ({ url: `/sessions/${id}`, method: 'PATCH', body }),

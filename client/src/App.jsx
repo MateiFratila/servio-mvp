@@ -215,6 +215,15 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/consultant/:id"
+          element={
+            <PublicLayout>
+              <ConsultantDetail />
+            </PublicLayout>
+          }
+        />
+
         <Route path="/" element={<AuthGuard><RootRedirect /></AuthGuard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

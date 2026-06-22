@@ -351,7 +351,7 @@ export default function ManageConsultantsTab() {
                         )}
                         <Tooltip content="See live consultant catalog profile">
                           <Link
-                            to={`/catalog/${c.id}`}
+                            to={`/catalog/${c.slug || c.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn-tertiary"

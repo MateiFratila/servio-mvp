@@ -82,7 +82,7 @@ router.get('/', async (req, res, next) => {
       prisma.session.findMany({
         where,
         include: SESSION_INCLUDE,
-        orderBy: { slot: { startTime: 'asc' } },
+        orderBy: { slot: { startTime: 'desc' } },
         skip: (pageNum - 1) * pageSize,
         take: pageSize,
       }),

@@ -172,10 +172,12 @@ async function main() {
       where: { userId: consultant1.id },
       update: {
         stripeOnboardingComplete: true,
+        slug: 'lorem-ipsum',
       },
       create: {
         userId: consultant1.id,
         displayName: 'Lorem Ipsum',
+        slug: 'lorem-ipsum',
         description: 'Consultant experimentat în contabilitate și fiscalitate, cu peste 12 ani de experiență în consultanță pentru IMM-uri și multinaționale.',
         hourlyRate: 90,
         isActive: true,
@@ -186,10 +188,13 @@ async function main() {
     }),
     prisma.consultantProfile.upsert({
       where: { userId: consultant2.id },
-      update: {},
+      update: {
+        slug: 'dolor-sit',
+      },
       create: {
         userId: consultant2.id,
         displayName: 'Dolor Sit',
+        slug: 'dolor-sit',
         description: 'Expert în fiscalitate cu experiență vastă în TVA, declarații fiscale și relația cu ANAF.',
         hourlyRate: 75,
         isActive: true,
