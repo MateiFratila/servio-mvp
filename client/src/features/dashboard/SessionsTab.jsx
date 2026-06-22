@@ -18,7 +18,10 @@ const STATUS_BADGE = {
 export default function SessionsTab() {
   const ALL_FILTER = '__all__'
   const [statusFilter, setStatusFilter] = useState(ALL_FILTER)
-  const { data, isLoading, refetch, isFetching } = useGetMySessionsAsConsultantQuery()
+  const { data, isLoading, refetch, isFetching } = useGetMySessionsAsConsultantQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  })
   const [updateStatus] = useUpdateSessionStatusMutation()
   const navigate = useNavigate()
   const t = useLabels()

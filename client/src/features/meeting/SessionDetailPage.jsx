@@ -136,7 +136,10 @@ export default function SessionDetailPage() {
   const navigate = useNavigate()
   const token = useSelector(selectCurrentToken)
 
-  const { data: session, isLoading, error } = useGetSessionQuery(sessionId)
+  const { data: session, isLoading, error } = useGetSessionQuery(sessionId, {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  })
   const { data: docs = [], isLoading: docsLoading } = useGetSessionDocumentsQuery(sessionId)
   const { data: messages = [] } = useGetSessionMessagesQuery(sessionId)
   const [cancelSession, { isLoading: cancelling }] = useCancelSessionMutation()

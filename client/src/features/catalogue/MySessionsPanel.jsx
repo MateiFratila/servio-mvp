@@ -73,7 +73,10 @@ function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, on
 }
 
 export default function MySessionsPanel() {
-  const { data, isLoading, refetch, isFetching } = useGetMySessionsAsClientQuery()
+  const { data, isLoading, refetch, isFetching } = useGetMySessionsAsClientQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  })
   const [cancelSession, { isLoading: cancelling }] = useCancelSessionMutation()
   const navigate = useNavigate()
   const t = useLabels()

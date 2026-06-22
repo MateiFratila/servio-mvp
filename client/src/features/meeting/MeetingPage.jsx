@@ -6,7 +6,10 @@ import MeetingRoom from './MeetingRoom'
 export default function MeetingPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { data: session, isLoading, error } = useGetSessionQuery(sessionId)
+  const { data: session, isLoading, error } = useGetSessionQuery(sessionId, {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  })
   const { data: tokenData, isLoading: tokenLoading, error: tokenError } = useGetMeetingTokenQuery(
     sessionId,
     { skip: !session?.meetingUrl }

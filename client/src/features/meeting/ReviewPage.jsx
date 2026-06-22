@@ -8,7 +8,10 @@ export default function ReviewPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
   const currentUser = useSelector(selectCurrentUser)
-  const { data: session, isLoading, error } = useGetSessionQuery(sessionId)
+  const { data: session, isLoading, error } = useGetSessionQuery(sessionId, {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  })
   const [submitReview, { isLoading: submitting }] = useSubmitReviewMutation()
   const [submitReviewReply, { isLoading: submittingReply }] = useSubmitReviewReplyMutation()
 

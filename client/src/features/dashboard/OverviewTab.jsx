@@ -15,7 +15,10 @@ const STATUS_BADGE = {
 }
 
 export default function OverviewTab({ consultantName }) {
-  const { data } = useGetMySessionsAsConsultantQuery()
+  const { data } = useGetMySessionsAsConsultantQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  })
   const navigate = useNavigate()
   const t = useLabels()
   const allSessions = data?.data ?? []
