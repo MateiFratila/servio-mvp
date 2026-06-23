@@ -8,7 +8,7 @@ const router = Router()
 // All /api/users routes require a valid JWT
 router.use(authenticate)
 
-const USER_SELECT = { id: true, email: true, role: true, createdAt: true }
+const USER_SELECT = { id: true, email: true, role: true, createdAt: true, isDeleted: true }
 
 // GET /api/users — admin: list all users
 router.get('/', authorize('admin'), async (req, res, next) => {
@@ -88,13 +88,13 @@ router.delete('/me', async (req, res, next) => {
   }
 })
 
-// PATCH /api/users/:id — admin: edit user (role and/or password)
+// PATCH /api/users/:id — admin: edit user (role, password and/or isDeleted)
 router.patch('/:id', authorize('admin'), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const { role, password } = req.body
+    const { role, password, isDeleted } = req.body
     const data = {}
 
     if (role !== undefined) {
@@ -110,6 +110,10 @@ router.patch('/:id', authorize('admin'), async (req, res, next) => {
         return res.status(400).json({ error: 'Parola trebuie să aibă cel puțin 8 caractere' })
       }
       data.passwordHash = await bcrypt.hash(password, 12)
+    }
+
+    if (isDeleted !== undefined) {
+      data.isDeleted = Boolean(isDeleted)
     }
 
     if (Object.keys(data).length === 0) {

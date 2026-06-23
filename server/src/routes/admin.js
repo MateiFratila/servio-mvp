@@ -4,6 +4,21 @@ const { authenticate, authorize } = require('../middleware/authenticate')
 
 const router = Router()
 
+function stripHtml(html) {
+  if (!html) return ''
+  let text = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+  text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
+  text = text.replace(/<[^>]*>/g, ' ')
+  text = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+  return text.replace(/\s+/g, ' ').trim()
+}
+
 router.use(authenticate, authorize('admin'))
 
 // GET /api/admin/stats — platform KPI summary
@@ -56,6 +71,11 @@ router.get('/settings', async (_req, res, next) => {
         secretKeyConfigured: secretKey.length > 0,
         webhookSecretConfigured: webhookSecret.length > 0,
       },
+      legal: {
+        legal_terms: db['legal_terms'] ?? '',
+        legal_privacy: db['legal_privacy'] ?? '',
+        legal_cookies: db['legal_cookies'] ?? '',
+      },
     })
   } catch (err) {
     next(err)
@@ -104,8 +124,7 @@ router.get('/consultants', async (_req, res, next) => {
       const hasCurrentAvailability = profile.availabilitySlots?.length > 0
       const isStripeOnboarded = !!profile.stripeOnboardingComplete
       const isProfileSetupComplete = !!(
-        profile.description &&
-        profile.description.trim() &&
+        stripHtml(profile.description) &&
         profile.specialisations?.length > 0 &&
         profile.displayName &&
         profile.displayName.trim() &&
@@ -236,7 +255,12 @@ router.post('/consultants/:id/resend-activation', async (req, res, next) => {
 
 // PATCH /api/admin/settings/:key — update an editable setting
 // Only whitelisted keys can be updated from the UI
-const EDITABLE_KEYS = new Set(['stripe_publishable_key'])
+const EDITABLE_KEYS = new Set([
+  'stripe_publishable_key',
+  'legal_terms',
+  'legal_privacy',
+  'legal_cookies'
+])
 
 router.patch('/settings/:key', async (req, res, next) => {
   try {
@@ -257,6 +281,61 @@ router.patch('/settings/:key', async (req, res, next) => {
     })
 
     res.json({ key, updated: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/admin/private-reviews — admin only, get paginated private reviews
+router.get('/private-reviews', async (req, res, next) => {
+  try {
+    const { page = 1, limit = 30 } = req.query
+    const pageNum = Math.max(1, parseInt(page, 10))
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10)))
+
+    const where = {
+      AND: [
+        { privateNotes: { not: null } },
+        { privateNotes: { not: '' } }
+      ]
+    }
+
+    const [reviews, total] = await Promise.all([
+      prisma.review.findMany({
+        where,
+        include: {
+          client: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+          consultant: {
+            select: {
+              id: true,
+              displayName: true,
+              slug: true,
+            },
+          },
+          session: {
+            select: {
+              id: true,
+              slot: {
+                select: {
+                  startTime: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (pageNum - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.review.count({ where }),
+    ])
+
+    res.json({ data: reviews, total, page: pageNum, pageSize })
   } catch (err) {
     next(err)
   }

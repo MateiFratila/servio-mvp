@@ -19,6 +19,66 @@ export default function UserManagementTab() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+
+  function requestSort(key) {
+    let direction = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  function getSortIcon(key) {
+    if (sortConfig.key !== key) {
+      return <span style={{ color: 'var(--text-muted)', opacity: 0.4, marginLeft: 6, fontSize: '0.85em' }}>↕</span>
+    }
+    return <span style={{ color: 'var(--primary-blue, var(--primary))', marginLeft: 6, fontSize: '0.85em' }}>{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>
+  }
+
+  const sortedUsers = [...users].sort((a, b) => {
+    if (!sortConfig.key) return 0
+    let aVal = a[sortConfig.key]
+    let bVal = b[sortConfig.key]
+
+    if (sortConfig.key === 'createdAt') {
+      const aTime = aVal ? new Date(aVal).getTime() : 0
+      const bTime = bVal ? new Date(bVal).getTime() : 0
+      return sortConfig.direction === 'asc' ? aTime - bTime : bTime - aTime
+    }
+
+    if (sortConfig.key === 'id') {
+      const aId = Number(aVal) || 0
+      const bId = Number(bVal) || 0
+      return sortConfig.direction === 'asc' ? aId - bId : bId - aId
+    }
+
+    if (sortConfig.key === 'isDeleted') {
+      const aDeleted = aVal ? 1 : 0
+      const bDeleted = bVal ? 1 : 0
+      return sortConfig.direction === 'asc' ? aDeleted - bDeleted : bDeleted - aDeleted
+    }
+
+    const aStr = String(aVal ?? '').toLowerCase()
+    const bStr = String(bVal ?? '').toLowerCase()
+
+    if (aStr < bStr) {
+      return sortConfig.direction === 'asc' ? -1 : 1
+    }
+    if (aStr > bStr) {
+      return sortConfig.direction === 'asc' ? 1 : -1
+    }
+    return 0
+  })
+
+  async function handleToggleDelete(user) {
+    try {
+      await updateUserByAdmin({ id: user.id, isDeleted: !user.isDeleted }).unwrap()
+    } catch (err) {
+      alert(err?.data?.error || 'A apărut o eroare la schimbarea stării utilizatorului.')
+    }
+  }
+
   function handleOpenModal(user) {
     setSelectedUser(user)
     setNewPassword('')
@@ -64,19 +124,35 @@ export default function UserManagementTab() {
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Created At</th>
+                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => requestSort('id')}>
+                  ID {getSortIcon('id')}
+                </th>
+                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => requestSort('email')}>
+                  Email {getSortIcon('email')}
+                </th>
+                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => requestSort('role')}>
+                  Role {getSortIcon('role')}
+                </th>
+                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => requestSort('isDeleted')}>
+                  Status {getSortIcon('isDeleted')}
+                </th>
+                <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => requestSort('createdAt')}>
+                  Created At {getSortIcon('createdAt')}
+                </th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {sortedUsers.map((u) => (
                 <tr key={u.id}>
                   <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>#{u.id}</td>
                   <td>{u.email}</td>
                   <td><span className={ROLE_BADGE[u.role] ?? 'badge'}>{u.role}</span></td>
+                  <td>
+                    <span className={u.isDeleted ? 'badge badge-red' : 'badge badge-green'}>
+                      {u.isDeleted ? 'Dezactivat' : 'Activ'}
+                    </span>
+                  </td>
                   <td style={{ color: 'var(--text-muted)' }}>
                     {new Date(u.createdAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
@@ -98,12 +174,28 @@ export default function UserManagementTab() {
                       >
                         Modifică Parola
                       </button>
+
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => handleToggleDelete(u)}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 12,
+                          border: u.isDeleted ? '1px solid var(--green, #10b981)' : '1px solid var(--red, #ef4444)',
+                          color: u.isDeleted ? 'var(--green, #10b981)' : 'var(--red, #ef4444)',
+                          background: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {u.isDeleted ? 'Reactivează' : 'Dezactivează'}
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {users.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>No users.</td></tr>
+              {sortedUsers.length === 0 && (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>No users.</td></tr>
               )}
             </tbody>
           </table>

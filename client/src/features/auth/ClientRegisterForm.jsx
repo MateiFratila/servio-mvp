@@ -11,6 +11,7 @@ export default function ClientRegisterForm({ onToggleLogin }) {
   const [register, { isLoading }] = useRegisterMutation()
 
   const [form, setForm] = useState({ email: '', password: '', confirm: '' })
+  const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState('')
 
   function set(field) {
@@ -33,6 +34,10 @@ export default function ClientRegisterForm({ onToggleLogin }) {
       setError('Parolele nu coincid.')
       return
     }
+    if (!agreed) {
+      setError('Trebuie să fii de acord cu Termenii și Condițiile, Politica de Confidențialitate (GDPR) și Politica de Cookies.')
+      return
+    }
 
     try {
       const result = await register({ email: form.email, password: form.password }).unwrap()
@@ -48,10 +53,12 @@ export default function ClientRegisterForm({ onToggleLogin }) {
   return (
     <>
       {/* Header */}
-      <div style={{ marginBottom: 28, textAlign: 'center' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>👋</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Creează-ți contul</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ marginBottom: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+        <div style={{ borderRadius: 12, overflow: 'hidden', display: 'flex', marginBottom: 4 }}>
+          <img src="/logo-long.jpg" alt="SERVIO Logo" style={{ height: 64, objectFit: 'contain', borderRadius: 12 }} />
+        </div>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Creează-ți contul</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 4, marginBottom: 0 }}>
           Acces gratuit. Plătești doar sesiunile rezervate.
         </p>
       </div>
@@ -108,11 +115,35 @@ export default function ClientRegisterForm({ onToggleLogin }) {
           />
         </div>
 
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, marginTop: 4, marginBottom: 4, lineHeight: '1.4' }}>
+          <input
+            type="checkbox"
+            style={{ width: 'auto', marginTop: 3 }}
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+          />
+          <span style={{ color: 'var(--text-muted)' }}>
+            Sunt de acord cu{' '}
+            <Link to="/legal/termeni" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 500, textDecoration: 'underline' }}>
+              Termenii și Condițiile
+            </Link>
+            {', '}
+            <Link to="/legal/confidentialitate" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 500, textDecoration: 'underline' }}>
+              Politica de Confidențialitate (GDPR)
+            </Link>
+            {' și '}
+            <Link to="/legal/cookies" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 500, textDecoration: 'underline' }}>
+              Politica de Cookies
+            </Link>
+            .
+          </span>
+        </label>
+
         <button
           type="submit"
           className="btn btn-primary"
           style={{ marginTop: 4, justifyContent: 'center', padding: '11px 0', fontSize: 15, fontWeight: 600 }}
-          disabled={isLoading}
+          disabled={isLoading || !agreed}
         >
           {isLoading ? 'Se creează contul…' : 'Creează cont'}
         </button>

@@ -13,6 +13,7 @@ import ContulMeuPage from './features/contul-meu/ContulMeuPage'
 import CataloguePage from './features/catalogue/CataloguePage'
 import ConsultantDetail from './features/catalogue/ConsultantDetail'
 import ToolsPage from './features/tools/ToolsPage'
+import LegalPageView from './features/tools/LegalPageView'
 import MeetingPage from './features/meeting/MeetingPage'
 import SessionDetailPage from './features/meeting/SessionDetailPage'
 import ReviewPage from './features/meeting/ReviewPage'
@@ -220,6 +221,33 @@ export default function App() {
           element={
             <PublicLayout>
               <ConsultantDetail />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/legal/termeni"
+          element={
+            <PublicLayout>
+              <LegalPageView sectionKey="legal_terms" title="Termeni și Condiții" />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/legal/confidentialitate"
+          element={
+            <PublicLayout>
+              <LegalPageView sectionKey="legal_privacy" title="Politică de Confidențialitate (GDPR)" />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/legal/cookies"
+          element={
+            <PublicLayout>
+              <LegalPageView sectionKey="legal_cookies" title="Politică de Cookies" />
             </PublicLayout>
           }
         />

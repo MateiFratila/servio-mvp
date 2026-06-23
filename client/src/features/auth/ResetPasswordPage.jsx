@@ -47,9 +47,11 @@ export default function ResetPasswordPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 24 }}>
       <div className="card" style={{ width: '100%', maxWidth: 400, padding: 36 }}>
-        <div style={{ marginBottom: 24, textAlign: 'center' }}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVIO</h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>Setează o nouă parolă</p>
+        <div style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ borderRadius: 12, overflow: 'hidden', display: 'flex' }}>
+            <img src="/logo-long.jpg" alt="SERVIO Logo" style={{ height: 64, objectFit: 'contain', borderRadius: 12 }} />
+          </div>
+          <p style={{ color: 'var(--text-muted)', marginTop: 8, marginBottom: 0 }}>Setează o nouă parolă</p>
         </div>
 
         {error && (

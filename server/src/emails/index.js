@@ -1,4 +1,5 @@
 const { brevo } = require('../lib/brevo')
+const renderEmailWithLayout = require('./layout')
 
 const bookingPendingConfirmation = require('./templates/bookingPendingConfirmation')
 const bookingConfirmed = require('./templates/bookingConfirmed')
@@ -9,6 +10,7 @@ const pingPongMessage = require('./templates/pingPongMessage')
 const forgotPassword = require('./templates/forgotPassword')
 const consultantActivation = require('./templates/consultantActivation')
 const requestPublication = require('./templates/requestPublication')
+const consultantNoAvailability = require('./templates/consultantNoAvailability')
 
 const DEFAULT_SENDER = {
   name: process.env.EMAIL_SENDER_NAME || 'SERVIO',
@@ -24,15 +26,33 @@ const LIST_IDS = {
 /**
  * Low-level send. All other helpers call this.
  *
- * @param {{ to: string, toName?: string, subject: string, htmlContent: string }} params
+ * @param {{ to: string, toName?: string, subject: string, htmlContent: string, scheduledAt?: string }} params
  */
-async function sendEmail({ to, toName, subject, htmlContent }) {
-  await brevo.transactionalEmails.sendTransacEmail({
+async function sendEmail({ to, toName, subject, htmlContent, scheduledAt }) {
+  const formattedHtml = renderEmailWithLayout(subject, htmlContent)
+
+  const data = await brevo.transactionalEmails.sendTransacEmail({
     sender: DEFAULT_SENDER,
     to: [{ email: to, name: toName }],
     subject,
-    htmlContent,
+    htmlContent: formattedHtml,
+    ...(scheduledAt ? { scheduledAt } : {}),
   })
+  return data
+}
+
+/**
+ * Cancel a scheduled email in Brevo.
+ *
+ * @param {string} messageId
+ */
+async function cancelScheduledEmail(messageId) {
+  if (!messageId) return
+  try {
+    await brevo.transactionalEmails.deleteScheduledSmtpEmail({ messageId })
+  } catch (err) {
+    console.error(`[brevo] Failed to delete scheduled email ${messageId}:`, err.message)
+  }
 }
 
 /**
@@ -71,14 +91,14 @@ async function sendBookingCancelled({ recipientEmail, recipientName, otherPartyN
   await sendEmail({ to: recipientEmail, toName: recipientName, subject, htmlContent })
 }
 
-async function sendSessionReminder({ recipientEmail, recipientName, otherPartyName, sessionDate, sessionTime, bookingUrl, minutesBefore }) {
+async function sendSessionReminder({ recipientEmail, recipientName, otherPartyName, sessionDate, sessionTime, bookingUrl, minutesBefore, scheduledAt }) {
   const { subject, htmlContent } = sessionReminder({ recipientName, otherPartyName, sessionDate, sessionTime, bookingUrl, minutesBefore })
-  await sendEmail({ to: recipientEmail, toName: recipientName, subject, htmlContent })
+  return await sendEmail({ to: recipientEmail, toName: recipientName, subject, htmlContent, scheduledAt })
 }
 
-async function sendReviewRequest({ clientEmail, clientName, consultantName, sessionDate, bookingUrl }) {
+async function sendReviewRequest({ clientEmail, clientName, consultantName, sessionDate, bookingUrl, scheduledAt }) {
   const { subject, htmlContent } = reviewRequest({ clientName, consultantName, sessionDate, bookingUrl })
-  await sendEmail({ to: clientEmail, toName: clientName, subject, htmlContent })
+  return await sendEmail({ to: clientEmail, toName: clientName, subject, htmlContent, scheduledAt })
 }
 
 /**
@@ -111,6 +131,26 @@ async function sendPublicationRequestEmail({ adminEmail, consultantName, consult
   await sendEmail({ to: adminEmail, subject, htmlContent })
 }
 
+async function sendNoAvailabilityNotification({ consultantEmail, consultantName, adminEmails = [] }) {
+  // Send to consultant
+  try {
+    const { subject, htmlContent } = consultantNoAvailability({ consultantName, isForAdmin: false })
+    await sendEmail({ to: consultantEmail, toName: consultantName, subject, htmlContent })
+  } catch (err) {
+    console.error(`[brevo] Failed sending no availability email to consultant ${consultantEmail}:`, err.message)
+  }
+
+  // Send to admins
+  for (const adminEmail of adminEmails) {
+    try {
+      const { subject, htmlContent } = consultantNoAvailability({ consultantName, isForAdmin: true })
+      await sendEmail({ to: adminEmail, subject, htmlContent })
+    } catch (err) {
+      console.error(`[brevo] Failed sending no availability email to admin ${adminEmail}:`, err.message)
+    }
+  }
+}
+
 module.exports = {
   sendEmail,
   subscribeToList,
@@ -124,4 +164,6 @@ module.exports = {
   sendForgotPasswordEmail,
   sendConsultantActivationEmail,
   sendPublicationRequestEmail,
+  sendNoAvailabilityNotification,
+  cancelScheduledEmail,
 }

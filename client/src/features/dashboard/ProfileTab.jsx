@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import Cropper from 'react-easy-crop'
+import HtmlEditor from '../../components/HtmlEditor'
 import {
   useGetMyProfileQuery,
   useUpdateMyProfileMutation,
@@ -23,23 +25,120 @@ const LANGUAGES = [
 
 // ── Small helpers ──────────────────────────────────────────────────────────
 
+function getCroppedImg(imageSrc, pixelCrop) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.src = imageSrc
+    image.crossOrigin = 'anonymous'
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('No 2d context available'))
+        return
+      }
+
+      canvas.width = pixelCrop.width
+      canvas.height = pixelCrop.height
+
+      ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        pixelCrop.width,
+        pixelCrop.height
+      )
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Canvas is empty'))
+            return
+          }
+          resolve(blob)
+        },
+        'image/jpeg',
+        0.92
+      )
+    }
+    image.onerror = (err) => reject(err)
+  })
+}
+
 function ImageUploadArea({ label, proxyUrl, onUpload, uploading, aspect }) {
   const inputRef = useRef(null)
   const [preview, setPreview] = useState(null)
   const [hasExisting, setHasExisting] = useState(true)
 
-  function handleFile(file) {
+  // Cropping States
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [selectedFileUrl, setSelectedFileUrl] = useState(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
+  const [processingCrop, setProcessingCrop] = useState(false)
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0]
     if (!file) return
-    setPreview(URL.createObjectURL(file))
-    const fd = new FormData()
-    fd.append('file', file)
-    onUpload(fd)
+    setSelectedFile(file)
+    setSelectedFileUrl(URL.createObjectURL(file))
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
   }
 
+  function handleCancelCrop() {
+    if (selectedFileUrl) {
+      URL.revokeObjectURL(selectedFileUrl)
+    }
+    setSelectedFile(null)
+    setSelectedFileUrl(null)
+    setCroppedAreaPixels(null)
+    if (inputRef.current) {
+      inputRef.current.value = ''
+    }
+  }
+
+  async function handleSaveCrop() {
+    if (!selectedFileUrl || !croppedAreaPixels) return
+    setProcessingCrop(true)
+    try {
+      const croppedBlob = await getCroppedImg(selectedFileUrl, croppedAreaPixels)
+      
+      if (preview) {
+        URL.revokeObjectURL(preview)
+      }
+      
+      const newPreviewUrl = URL.createObjectURL(croppedBlob)
+      setPreview(newPreviewUrl)
+
+      const fileExtension = selectedFile.type?.split('/')[1] || 'jpg'
+      const croppedFile = new File([croppedBlob], `cropped-${label.toLowerCase()}.${fileExtension}`, {
+        type: selectedFile.type || 'image/jpeg',
+      })
+
+      const fd = new FormData()
+      fd.append('file', croppedFile)
+      await onUpload(fd)
+      
+      handleCancelCrop()
+    } catch (err) {
+      console.error('Cropping failed:', err)
+    } finally {
+      setProcessingCrop(false)
+    }
+  }
+
+  const aspectParts = aspect ? aspect.split('/') : ['1', '1']
+  const aspectValue = parseFloat(aspectParts[0]) / parseFloat(aspectParts[1]) || 1
   const imgSrc = preview || (hasExisting ? proxyUrl : null)
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {label}
       </label>
@@ -80,8 +179,140 @@ function ImageUploadArea({ label, proxyUrl, onUpload, uploading, aspect }) {
         type="file"
         accept="image/jpeg,image/png,image/webp"
         style={{ display: 'none' }}
-        onChange={(e) => handleFile(e.target.files[0])}
+        onChange={handleFileSelect}
       />
+
+      {/* Elegant cropping modal */}
+      {selectedFileUrl && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 10000,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16
+        }}>
+          <div style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-md)',
+            width: '100%',
+            maxWidth: 520,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '16px 24px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
+                Fine-tune Your {label}
+              </h4>
+              <button
+                type="button"
+                onClick={handleCancelCrop}
+                disabled={processingCrop}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: 20,
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Cropper Frame */}
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                height: 300,
+                background: '#0f172a',
+                borderRadius: 'var(--radius)',
+                overflow: 'hidden'
+              }}>
+                <Cropper
+                  image={selectedFileUrl}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={aspectValue}
+                  cropShape={label.toLowerCase() === 'avatar' ? 'round' : 'rect'}
+                  showGrid={true}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
+                />
+              </div>
+
+              {/* Slider scale constraint */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Zoom / Scale</span>
+                  <span style={{ color: 'var(--text)', fontFamily: 'monospace' }}>{zoom.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  style={{
+                    width: '100%',
+                    height: 6,
+                    borderRadius: 3,
+                    background: 'var(--border)',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid var(--border)',
+              background: 'var(--bg)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 12
+            }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleCancelCrop}
+                disabled={processingCrop}
+                style={{ padding: '8px 16px' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleSaveCrop}
+                disabled={processingCrop}
+                style={{ padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                {processingCrop ? 'Processing…' : 'Apply Crop & Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -534,9 +765,9 @@ export default function ProfileTab() {
             proxyUrl={bannerSrc}
             onUpload={(fd) => uploadBanner(fd)}
             uploading={uploadingBanner}
-            aspect="4/1"
+            aspect="5/1"
           />
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
             <div style={{ width: 80, flexShrink: 0 }}>
               <ImageUploadArea
                 label="Avatar"
@@ -546,9 +777,19 @@ export default function ProfileTab() {
                 aspect="1/1"
               />
             </div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              JPEG, PNG or WebP. Avatar max 5 MB. Banner is displayed at the top of your public profile page.
-            </p>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Media Recommendations</span>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                <li><strong>Supported Formats:</strong> JPEG, PNG, or WebP</li>
+                <li><strong>Max File Size:</strong> 5 MB each</li>
+                <li><strong>Recommended Aspect Ratios:</strong>
+                  <ul style={{ margin: 0, paddingLeft: 14 }}>
+                    <li><strong>Banner:</strong> 5:1 (1:5 wide horizontal aspect ratio, e.g., 1000x200 px)</li>
+                    <li><strong>Avatar/Profile picture:</strong> 1:1 (square, e.g., 400x400 px)</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -589,7 +830,7 @@ export default function ProfileTab() {
 
           <div className="form-group">
             <label>Bio</label>
-            <textarea rows={4} value={form.description} onChange={(e) => handleChange('description', e.target.value)} />
+            <HtmlEditor value={form.description} onChange={(val) => handleChange('description', val)} minHeight="240px" />
           </div>
 
           <div className="form-group">

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import HtmlEditor from '../../components/HtmlEditor'
 import {
   useGetAllConsultantsQuery,
   useUpdateConsultantMutation,
@@ -429,7 +430,7 @@ function EditModal({ consultant, onSave, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(16, 26, 40, 0.4)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div className="card" style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="card" style={{ width: '100%', maxWidth: 580, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="section-title" style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>Edit Consultant</h3>
           <button
@@ -460,11 +461,10 @@ function EditModal({ consultant, onSave, onClose }) {
           </div>
           <div className="form-group">
             <label style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Description</label>
-            <textarea
-              rows={3}
+            <HtmlEditor
               value={form.description ?? ''}
-              onChange={(e) => handleChange('description', e.target.value)}
-              style={{ padding: '8px 12px', fontSize: '13.5px', borderRadius: '6px' }}
+              onChange={(val) => handleChange('description', val)}
+              minHeight="180px"
             />
           </div>
           <div className="form-group">

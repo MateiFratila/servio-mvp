@@ -29,7 +29,9 @@ function pingPongMessage({ recipientName, senderRole, senderName, eventType, boo
       ${eventText} legat de sesiunea ta.
     </p>
     <p>Deschide pagina sesiunii pentru a vedea detaliile și a răspunde:</p>
-    <p><a href="${bookingUrl}">Deschide sesiunea</a></p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${bookingUrl}" class="btn" style="background-color: #377dff; color: #ffffff !important; font-weight: 600; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">Deschide sesiunea</a>
+    </p>
   `
 
   return { subject, htmlContent }

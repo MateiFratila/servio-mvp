@@ -53,6 +53,9 @@ export const toolsApi = api.injectEndpoints({
       query: ({ key, value }) => ({ url: `/admin/settings/${key}`, method: 'PATCH', body: { value } }),
       invalidatesTags: ['SystemSettings'],
     }),
+    getPublicLegalDocument: build.query({
+      query: (key) => `/public-settings/legal/${key}`,
+    }),
     getSuggestions: build.query({
       query: () => '/admin/suggestions',
       providesTags: ['Suggestions'],
@@ -88,6 +91,7 @@ export const {
   useUpdateUserByAdminMutation,
   useGetSystemSettingsQuery,
   useUpdateSystemSettingMutation,
+  useGetPublicLegalDocumentQuery,
   useGetSuggestionsQuery,
   useApproveSpecialisationSuggestionMutation,
   useRejectSpecialisationSuggestionMutation,

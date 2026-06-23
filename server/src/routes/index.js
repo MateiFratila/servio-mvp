@@ -36,4 +36,21 @@ router.get('/config', async (_req, res) => {
   }
 })
 
+// Public legal endpoints
+router.get('/public-settings/legal/:key', async (req, res, next) => {
+  try {
+    const { key } = req.params
+    const allowedKeys = ['legal_terms', 'legal_privacy', 'legal_cookies']
+    if (!allowedKeys.includes(key)) {
+      return res.status(400).json({ error: 'Sectiunea legala solicitata nu este valida.' })
+    }
+
+    const prisma = require('../db')
+    const setting = await prisma.systemSetting.findUnique({ where: { key } })
+    return res.json({ key, value: setting?.value ?? '' })
+  } catch (err) {
+    next(err)
+  }
+})
+
 module.exports = router

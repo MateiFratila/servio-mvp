@@ -277,6 +277,124 @@ async function main() {
     console.log(`  Slots already exist (${existingSlots}), skipping slot creation`)
   }
 
+  // Seed default system settings for legal documents if they don't exist yet
+  const defaultLegalDocs = [
+    { key: 'legal_terms', value: '<h2>Termeni și Condiții</h2><p>Bine ați venit pe Servio. Utilizând serviciile noastre, sunteți de acord cu acești termeni.</p>' },
+    { key: 'legal_privacy', value: '<h2>Politica de Confidențialitate (GDPR)</h2><p>Protecția datelor dumneavoastră este importantă pentru noi. Vă rugăm să citiți detaliile de mai jos.</p>' },
+    { key: 'legal_cookies', value: '<h2>Politica de Cookies</h2><p>Utilizăm cookies pentru a asigura o funcționare optimă a paginii web.</p>' },
+  ]
+  for (const doc of defaultLegalDocs) {
+    await prisma.systemSetting.upsert({
+      where: { key: doc.key },
+      update: {},
+      create: doc,
+    })
+  }
+
+  // ── Seed 35 Private Reviews for testing ─────────────────────────────────
+  console.log('  Seeding 35 dummy private reviews…')
+
+  // Cleanup past seed reviews
+  await prisma.review.deleteMany({
+    where: {
+      privateNotes: {
+        contains: '[Seed]',
+      },
+    },
+  })
+
+  // Delete past sessions/slots associated with Seed reviews
+  await prisma.session.deleteMany({
+    where: {
+      notes: {
+        contains: '[Seed session]',
+      },
+    },
+  })
+
+  await prisma.availabilitySlot.deleteMany({
+    where: {
+      endTime: {
+        lt: new Date(),
+      },
+      isBooked: true,
+    },
+  })
+
+  const reviewComments = [
+    "Interfața este foarte curată și rapidă. Mi-ar plăcea și o aplicație mobilă nativă pe viitor.",
+    "Totul a decurs perfect, consultanta a fost extrem de la obiect și am salvat mult timp.",
+    "Procesul de plată prin Stripe a dat o mică eroare prima dată, dar la reîncercare a mers.",
+    "Serviciul clienți a fost de ajutor când am avut o întrebare despre facturare.",
+    "Platforma Servio m-a ajutat să găsesc specialistul potrivit în mai puțin de 10 minute pentru problema mea de TVA.",
+    "Foarte utilă opțiunea de ping-pong pentru documente înainte de ședință.",
+    "Sunetul și imaginea s-au auzit impecabil. Daily.co funcționează de minune.",
+    "Aș fi vrut să pot plăti și prin transfer bancar direct, în rest totul este super ok.",
+    "Un instrument excelent pentru consultanță. Simplu de utilizat de pe laptop.",
+    "Apreciez atenția la detalii în design-ul platformei. Nimic de reproșat.",
+    "Consultantul a întârziat 5 minute, dar platforma ne-a permis să prelungim ședința automat.",
+    "Super mulțumit de claritatea apelului video. Recomand SERVIO cu încredere.",
+  ]
+
+  const romanianPlaceholderReviews = []
+  for (let i = 1; i <= 35; i++) {
+    const rComment = reviewComments[i % reviewComments.length]
+    romanianPlaceholderReviews.push({
+      rating: (i % 5) + 1, // stars 1 to 5
+      testimonial: `Am avut o discuție utilă și productivă. Recomand cu încredere! (Recenzie publică #${i})`,
+      displayName: i % 3 === 0 ? null : `Utilizator de test #${i}`,
+      privateNotes: `[Seed] Feedback privat platformă #${i}: ${rComment}`,
+      daysAgo: i,
+    })
+  }
+
+  for (const item of romanianPlaceholderReviews) {
+    const slotTimeStart = new Date()
+    slotTimeStart.setDate(slotTimeStart.getDate() - item.daysAgo)
+    slotTimeStart.setHours(10, 0, 0, 0)
+
+    const slotTimeEnd = new Date(slotTimeStart)
+    slotTimeEnd.setMinutes(30)
+
+    const consultantId = item.daysAgo % 2 === 0 ? profile1.id : profile2.id
+
+    const slot = await prisma.availabilitySlot.create({
+      data: {
+        consultantId,
+        startTime: slotTimeStart,
+        endTime: slotTimeEnd,
+        isBooked: true,
+      },
+    })
+
+    const session = await prisma.session.create({
+      data: {
+        clientId: client1.id,
+        consultantId,
+        slotId: slot.id,
+        status: 'completed',
+        notes: `[Seed session] Sesiune de test pentru review #${item.daysAgo}`,
+        paymentStatus: 'paid',
+        createdAt: slotTimeStart,
+      },
+    })
+
+    await prisma.review.create({
+      data: {
+        sessionId: session.id,
+        clientId: client1.id,
+        consultantId,
+        rating: item.rating,
+        testimonial: item.testimonial,
+        displayName: item.displayName,
+        privateNotes: item.privateNotes,
+        createdAt: slotTimeStart,
+      },
+    })
+  }
+
+  console.log('  35 private reviews successfully seeded.')
+
   console.log('Seed complete:')
   console.log('  admin@servio.dev       / admin1234')
   console.log('  lorem@servio.dev       / consultant1234')

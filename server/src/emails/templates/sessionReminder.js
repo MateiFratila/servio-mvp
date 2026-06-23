@@ -18,7 +18,9 @@ function sessionReminder({ recipientName, otherPartyName, sessionDate, sessionTi
       <strong>${timeLabel}</strong> on <strong>${sessionDate}</strong> at <strong>${sessionTime}</strong>.
     </p>
     <p>Access your meeting room and session notes here:</p>
-    <p><a href="${bookingUrl}">Join session</a></p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${bookingUrl}" class="btn" style="background-color: #377dff; color: #ffffff !important; font-weight: 600; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">Join session</a>
+    </p>
   `
 
   return { subject, htmlContent }

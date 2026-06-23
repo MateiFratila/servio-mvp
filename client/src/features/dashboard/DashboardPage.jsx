@@ -99,7 +99,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="container" style={{ flex: 1, paddingTop: 32, paddingBottom: 32 }}>
-        {activeTab === 'overview' && <OverviewTab consultantName={user?.name} />}
+        {activeTab === 'overview' && <OverviewTab consultantName={profile?.displayName} />}
         {activeTab === 'sessions' && <SessionsTab />}
         {activeTab === 'availability' && <AvailabilityTab />}
         {activeTab === 'profile' && <ProfileTab />}

@@ -72,6 +72,7 @@ import { useLabels } from '../../lib/useLabels'
  * @property {boolean} isEmailConfirmed
  * @property {boolean} isHourlyRateSet
  * @property {boolean} isAvailabilitySet
+ * @property {boolean} hasCurrentAvailability
  * @property {boolean} isStripeOnboarded
  * @property {boolean} isProfileSetupComplete
  * @property {boolean} accountComplete
@@ -114,9 +115,24 @@ class ConsultantProfileModel {
    * @returns {boolean}
    */
   validateProfileSetupComplete() {
+    const stripHtml = (html) => {
+      if (!html) return ''
+      let text = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+      text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
+      text = text.replace(/<[^>]*>/g, ' ')
+      text = text
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+      return text.replace(/\s+/g, ' ').trim()
+    }
+    const cleanBio = stripHtml(this.description)
+
     return !!(
-      this.description &&
-      this.description.trim() &&
+      cleanBio &&
       this.specialisations &&
       this.specialisations.length > 0 &&
       this.displayName &&
@@ -217,6 +233,39 @@ export default function AcasaPage() {
           >
             ×
           </button>
+        </div>
+      )}
+
+      {/* Availability warning banner */}
+      {isConsultant && profile && profile.accountComplete && !profile.hasCurrentAvailability && (
+        <div style={{
+          background: 'var(--red-bg)',
+          color: 'var(--red)',
+          borderBottom: '1px solid #fca5a5',
+          padding: '12px 24px',
+          fontSize: '14px',
+          fontWeight: '500',
+          textAlign: 'center'
+        }}>
+          Clienții nu vă pot rezerva, nu aveți nici un slot disponibil. Completați calendarul de disponibilitate{' '}
+          <button
+            onClick={() => {
+              navigate('/contul-meu?tab=availability')
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: 'var(--red)',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              fontWeight: '700',
+              fontFamily: 'inherit',
+              fontSize: 'inherit'
+            }}
+          >
+            aici
+          </button>.
         </div>
       )}
 

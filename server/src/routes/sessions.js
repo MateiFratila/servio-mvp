@@ -2,7 +2,7 @@ const { Router } = require('express')
 const prisma = require('../db')
 const { authenticate, authorize } = require('../middleware/authenticate')
 const { createMeetingToken, createRoom } = require('../lib/daily')
-const { sendBookingConfirmed, sendBookingCancelled } = require('../emails')
+const { sendBookingConfirmed, sendBookingCancelled, sendSessionReminder, sendReviewRequest, cancelScheduledEmail } = require('../emails')
 
 const router = Router()
 
@@ -221,21 +221,143 @@ router.patch('/:id', authorize('consultant', 'admin'), async (req, res, next) =>
       include: SESSION_INCLUDE,
     })
 
-    // Send email when consultant confirms
+    // Send email when consultant confirms and schedule reminders/review requests
     if (status === 'confirmed') {
       try {
         const appUrl = process.env.APP_URL || 'http://localhost:5173'
         const startTime = new Date(updated.slot.startTime)
+        const duration = updated.durationMinutes || 30
+        const endTime = new Date(startTime.getTime() + duration * 60000)
+        const now = new Date()
+
+        const sessionDateStr = startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' })
+        const sessionTimeStr = startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+        const bookingUrl = `${appUrl}/sessions/${updated.id}`
+
+        // 1. Instant confirmation email to client
         await sendBookingConfirmed({
           clientEmail: updated.client.email,
           clientName: updated.client.email,
           consultantName: updated.consultant.displayName,
-          sessionDate: startTime.toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' }),
-          sessionTime: startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }),
-          bookingUrl: `${appUrl}/sessions/${updated.id}`,
+          sessionDate: sessionDateStr,
+          sessionTime: sessionTimeStr,
+          bookingUrl,
         })
+
+        const scheduledIds = []
+
+        // 2. Schedule 24-hour reminders (recipient client & consultant)
+        const t24 = new Date(startTime.getTime() - 24 * 60 * 60 * 1000)
+        if (now < t24) {
+          try {
+            const clientReminder24 = await sendSessionReminder({
+              recipientEmail: updated.client.email,
+              recipientName: updated.client.email,
+              otherPartyName: updated.consultant.displayName,
+              sessionDate: sessionDateStr,
+              sessionTime: sessionTimeStr,
+              bookingUrl,
+              minutesBefore: 24 * 60,
+              scheduledAt: t24.toISOString()
+            })
+            if (clientReminder24?.messageId) {
+              scheduledIds.push(clientReminder24.messageId)
+            }
+          } catch (err) {
+            console.error('[brevo] 24h reminder scheduling failed for client:', err.message)
+          }
+
+          if (updated.consultant.user?.email) {
+            try {
+              const consultantReminder24 = await sendSessionReminder({
+                recipientEmail: updated.consultant.user.email,
+                recipientName: updated.consultant.displayName,
+                otherPartyName: updated.client.email,
+                sessionDate: sessionDateStr,
+                sessionTime: sessionTimeStr,
+                bookingUrl,
+                minutesBefore: 24 * 60,
+                scheduledAt: t24.toISOString()
+              })
+              if (consultantReminder24?.messageId) {
+                scheduledIds.push(consultantReminder24.messageId)
+              }
+            } catch (err) {
+              console.error('[brevo] 24h reminder scheduling failed for consultant:', err.message)
+            }
+          }
+        }
+
+        // 3. Schedule 1-hour reminders (recipient client & consultant)
+        const t1 = new Date(startTime.getTime() - 1 * 60 * 60 * 1000)
+        if (now < t1) {
+          try {
+            const clientReminder1 = await sendSessionReminder({
+              recipientEmail: updated.client.email,
+              recipientName: updated.client.email,
+              otherPartyName: updated.consultant.displayName,
+              sessionDate: sessionDateStr,
+              sessionTime: sessionTimeStr,
+              bookingUrl,
+              minutesBefore: 60,
+              scheduledAt: t1.toISOString()
+            })
+            if (clientReminder1?.messageId) {
+              scheduledIds.push(clientReminder1.messageId)
+            }
+          } catch (err) {
+            console.error('[brevo] 1h reminder scheduling failed for client:', err.message)
+          }
+
+          if (updated.consultant.user?.email) {
+            try {
+              const consultantReminder1 = await sendSessionReminder({
+                recipientEmail: updated.consultant.user.email,
+                recipientName: updated.consultant.displayName,
+                otherPartyName: updated.client.email,
+                sessionDate: sessionDateStr,
+                sessionTime: sessionTimeStr,
+                bookingUrl,
+                minutesBefore: 60,
+                scheduledAt: t1.toISOString()
+              })
+              if (consultantReminder1?.messageId) {
+                scheduledIds.push(consultantReminder1.messageId)
+              }
+            } catch (err) {
+              console.error('[brevo] 1h reminder scheduling failed for consultant:', err.message)
+            }
+          }
+        }
+
+        // 4. Schedule client review request email at T_END
+        if (now < endTime) {
+          try {
+            const clientReviewRequest = await sendReviewRequest({
+              clientEmail: updated.client.email,
+              clientName: updated.client.email,
+              consultantName: updated.consultant.displayName,
+              sessionDate: sessionDateStr,
+              bookingUrl,
+              scheduledAt: endTime.toISOString()
+            })
+            if (clientReviewRequest?.messageId) {
+              scheduledIds.push(clientReviewRequest.messageId)
+            }
+          } catch (err) {
+            console.error('[brevo] review request scheduling failed for client:', err.message)
+          }
+        }
+
+        // Finally, save these scheduled email IDs on the Session table
+        if (scheduledIds.length > 0) {
+          await prisma.session.update({
+            where: { id: updated.id },
+            data: { scheduledEmailIds: scheduledIds }
+          })
+        }
       } catch (err) {
-        console.error('[email] sendBookingConfirmed failed for session', id, err.message)
+        console.error('[email] sendBookingConfirmed & scheduling failed for session', id, err.message)
       }
     }
 
@@ -281,7 +403,7 @@ router.get('/:id/meeting-token', async (req, res, next) => {
   }
 })
 
-// DELETE /api/sessions/:id — cancel session (client cancels own; admin cancels any)
+// DELETE /api/sessions/:id — cancel session (admin cancels only)
 router.delete('/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id)
@@ -293,17 +415,22 @@ router.delete('/:id', async (req, res, next) => {
     })
     if (!existing) return res.status(404).json({ error: 'Session not found' })
 
-    if (req.user.role === 'client' && existing.clientId !== req.user.id) {
-      return res.status(403).json({ error: 'Forbidden' })
+    // Users cannot cancel, reschedule, or resubmit. Only admins can cancel.
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Doar administratorii pot anula ședințe.' })
     }
-    if (req.user.role === 'consultant') {
-      return res.status(403).json({ error: 'Forbidden' })
+
+    // Deschedule all scheduled notification emails from Brevo if they exist
+    if (existing.scheduledEmailIds && Array.isArray(existing.scheduledEmailIds)) {
+      for (const emailId of existing.scheduledEmailIds) {
+        await cancelScheduledEmail(emailId)
+      }
     }
 
     // Free the availability slot(s) so they can be rebooked
     const endTimeLimit = new Date(existing.slot.startTime.getTime() + existing.durationMinutes * 60000)
     const cancelOps = [
-      prisma.session.update({ where: { id }, data: { status: 'cancelled' } }),
+      prisma.session.update({ where: { id }, data: { status: 'cancelled', scheduledEmailIds: null } }),
       prisma.availabilitySlot.updateMany({
         where: {
           consultantId: existing.consultantId,

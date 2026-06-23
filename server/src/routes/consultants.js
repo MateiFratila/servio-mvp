@@ -4,7 +4,7 @@ const prisma = require('../db')
 const stripe = require('../lib/stripe')
 const { authenticate, authorize, optionalAuthenticate } = require('../middleware/authenticate')
 const { uploadBlob, streamBlob, deleteBlob } = require('../lib/azureStorage')
-const { sendPublicationRequestEmail } = require('../emails')
+const { sendPublicationRequestEmail, sendNoAvailabilityNotification } = require('../emails')
 
 const router = Router()
 
@@ -42,6 +42,21 @@ function runImageUpload(req, res) {
   return new Promise((resolve, reject) => {
     uploadImage.single('file')(req, res, (err) => (err ? reject(err) : resolve()))
   })
+}
+
+function stripHtml(html) {
+  if (!html) return ''
+  let text = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+  text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
+  text = text.replace(/<[^>]*>/g, ' ')
+  text = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+  return text.replace(/\s+/g, ' ').trim()
 }
 
 // Fields exposed to any authenticated caller (catalogue, profile cards)
@@ -101,7 +116,7 @@ router.get('/', optionalAuthenticate, async (req, res, next) => {
     const pageNum = Math.max(1, parseInt(page))
     const pageSize = Math.min(50, Math.max(1, parseInt(limit)))
 
-    const where = { isActive: true }
+    const where = { isActive: true, user: { isDeleted: false } }
     if (specialisationIds) {
       const ids = specialisationIds.split(',').map(Number).filter(Boolean)
       if (ids.length > 0) {
@@ -227,8 +242,7 @@ router.get('/me', authenticate, authorize('consultant', 'admin'), async (req, re
     const hasCurrentAvailability = futureSlotsCount > 0
     const isStripeOnboarded = !!profile.stripeOnboardingComplete
     const isProfileSetupComplete = !!(
-      profile.description &&
-      profile.description.trim() &&
+      stripHtml(profile.description) &&
       profile.specialisations?.length > 0 &&
       profile.displayName &&
       profile.displayName.trim() &&
@@ -288,8 +302,7 @@ router.post('/me/request-publication', authenticate, authorize('consultant'), as
     const isAvailabilitySet = slotsCount > 0
     const isStripeOnboarded = !!profile.stripeOnboardingComplete
     const isProfileSetupComplete = !!(
-      profile.description &&
-      profile.description.trim() &&
+      stripHtml(profile.description) &&
       profile.specialisations?.length > 0 &&
       profile.displayName &&
       profile.displayName.trim() &&
@@ -652,11 +665,68 @@ router.get('/:id', optionalAuthenticate, async (req, res, next) => {
 
     const consultant = await prisma.consultantProfile.findUnique({
       where: { id },
-      select: CONSULTANT_SELECT,
+      select: {
+        ...CONSULTANT_SELECT,
+        user: { select: { isDeleted: true } },
+      },
+    })
+    if (!consultant || consultant.user?.isDeleted) return res.status(404).json({ error: 'Consultant not found' })
+
+    // Check if there are any unbooked slots in the future
+    const futureSlotsCount = await prisma.availabilitySlot.count({
+      where: {
+        consultantId: id,
+        startTime: { gte: new Date() },
+        isBooked: false,
+      },
+    })
+    const hasCurrentAvailability = futureSlotsCount > 0
+
+    res.json({
+      ...consultant,
+      hasCurrentAvailability,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/consultants/:id/notify-no-availability — notify consultant & admins of no availability setup
+router.post('/:id/notify-no-availability', authenticate, async (req, res, next) => {
+  try {
+    const id = await resolveConsultantId(req.params.id)
+    if (!id) return res.status(404).json({ error: 'Consultant not found' })
+
+    const consultant = await prisma.consultantProfile.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: { email: true }
+        }
+      }
     })
     if (!consultant) return res.status(404).json({ error: 'Consultant not found' })
 
-    res.json(consultant)
+    // Find admins to notify them via email
+    const admins = await prisma.user.findMany({
+      where: { role: 'admin' },
+      select: { email: true },
+    })
+
+    const adminEmails = admins.map(admin => admin.email)
+    const consultantEmail = consultant.user.email
+    const consultantName = consultant.displayName || 'Consultant'
+
+    // We do not pass any client specific info here to preserve anonymity
+    sendNoAvailabilityNotification({
+      consultantEmail,
+      consultantName,
+      adminEmails,
+    }).catch(err =>
+      console.error(`[brevo] Failed sending no availability email for consultant ${consultantName}:`, err.message)
+    )
+
+    res.json({ success: true, message: 'Notificările de indisponibilitate au fost trimise cu succes.' })
   } catch (err) {
     next(err)
   }

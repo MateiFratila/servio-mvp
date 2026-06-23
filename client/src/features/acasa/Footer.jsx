@@ -10,8 +10,10 @@ export default function Footer() {
     <footer style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '40px 0 24px', marginTop: 'auto' }}>
       <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 32 }}>
         <div>
-          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVIO</span>
-          <p style={{ color: 'var(--text-muted)', marginTop: 6, fontSize: 13, maxWidth: 260 }}>
+          <div style={{ display: 'flex', alignItems: 'center', borderRadius: 12, overflow: 'hidden' }}>
+            <img src="/logo-long.jpg" alt="SERVIO Logo" style={{ height: 32, objectFit: 'contain', borderRadius: 12 }} />
+          </div>
+          <p style={{ color: 'var(--text-muted)', marginTop: 12, fontSize: 13, maxWidth: 260 }}>
             {t.footer.tagline}
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
@@ -31,6 +33,7 @@ export default function Footer() {
           <FooterCol title={t.footer.legalTitle}>
             <FooterLink href="/legal/termeni">{t.footer.terms}</FooterLink>
             <FooterLink href="/legal/confidentialitate">{t.footer.privacy}</FooterLink>
+            <FooterLink href="/legal/cookies">{t.footer.cookies}</FooterLink>
           </FooterCol>
           <FooterCol title={t.footer.supportTitle}>
             <button

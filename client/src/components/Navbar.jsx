@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate, NavLink, useLocation } from 'react-router-dom'
+import { useNavigate, NavLink, useLocation, Link } from 'react-router-dom'
 import { logout, selectCurrentUser, selectCurrentRole } from '../features/auth/authSlice'
 import { useLogoutApiMutation } from '../features/auth/authApi'
 import { setLanguage, selectLanguage } from '../features/lang/langSlice'
@@ -43,7 +43,9 @@ export default function Navbar() {
     <nav style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', height: 57 }}>
       <div className="container" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVIO</span>
+          <Link to="/acasa" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit', borderRadius: 12, overflow: 'hidden' }}>
+            <img src="/logo-long.jpg" alt="SERVIO Logo" style={{ height: 32, objectFit: 'contain', borderRadius: 12 }} />
+          </Link>
           <div style={{ display: 'flex', gap: 4 }}>
             <NavLink to="/acasa" style={linkStyle}>{t.nav.home}</NavLink>
             {user && (

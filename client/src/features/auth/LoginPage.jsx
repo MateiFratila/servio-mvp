@@ -65,9 +65,11 @@ export default function LoginPage() {
           <ClientRegisterForm onToggleLogin={() => setIsRegistering(false)} />
         ) : isForgotPassword ? (
           <>
-            <div style={{ marginBottom: 24, textAlign: 'center' }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVIO</h1>
-              <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>Recuperare parolă</p>
+            <div style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', display: 'flex' }}>
+                <img src="/logo-long.jpg" alt="SERVIO Logo" style={{ height: 64, objectFit: 'contain', borderRadius: 12 }} />
+              </div>
+              <p style={{ color: 'var(--text-muted)', marginTop: 8, marginBottom: 0 }}>Recuperare parolă</p>
             </div>
 
             {forgotError && (
@@ -126,9 +128,11 @@ export default function LoginPage() {
           </>
         ) : (
           <>
-            <div style={{ marginBottom: 24, textAlign: 'center' }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--primary-dark)' }}>SERVIO</h1>
-              <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>{t.login.tagline}</p>
+            <div style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', display: 'flex' }}>
+                <img src="/logo-long.jpg" alt="SERVIO Logo" style={{ height: 64, objectFit: 'contain', borderRadius: 12 }} />
+              </div>
+              <p style={{ color: 'var(--text-muted)', marginTop: 8, marginBottom: 0 }}>{t.login.tagline}</p>
             </div>
 
             {error && (

@@ -106,6 +106,12 @@ export const catalogueApi = api.injectEndpoints({
       query: (id) => `/consultants/${id}/reviews`,
       providesTags: (_res, _err, id) => [{ type: 'Consultant', id }],
     }),
+    notifyNoAvailability: build.mutation({
+      query: (id) => ({
+        url: `/consultants/${id}/notify-no-availability`,
+        method: 'POST',
+      }),
+    }),
   }),
 })
 
@@ -128,4 +134,5 @@ export const {
   useSubmitReviewMutation,
   useSubmitReviewReplyMutation,
   useGetConsultantReviewsQuery,
+  useNotifyNoAvailabilityMutation,
 } = catalogueApi

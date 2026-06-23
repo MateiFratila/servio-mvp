@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PaymentElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js'
 import stripePromise from '../../lib/stripe'
-import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation, useUploadDocumentMutation } from './catalogueApi'
+import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation, useUploadDocumentMutation, useNotifyNoAvailabilityMutation } from './catalogueApi'
 import { api } from '../../services/api'
 import { useLabels } from '../../lib/useLabels'
 
@@ -73,12 +73,14 @@ function PaymentForm({ clientSecret, onSuccess, onCancel }) {
   )
 }
 
-export default function BookingPanel({ consultantId, consultantName }) {
+export default function BookingPanel({ consultantId, consultantName, hasCurrentAvailability }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
   const t = useLabels()
   const fileInputRef = useRef(null)
+
+  const [notifyNoAvailability, { isLoading: notifying }] = useNotifyNoAvailabilityMutation()
   
   // Step 1 states (Single-date / Month Calendar view)
   const today = useMemo(() => {
@@ -175,6 +177,16 @@ export default function BookingPanel({ consultantId, consultantName }) {
   function handleNextMonth() {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
     setSelectedSlotId(null)
+  }
+
+  async function handleNoAvailabilityClick() {
+    try {
+      await notifyNoAvailability(consultantId).unwrap()
+    } catch (err) {
+      console.error('Failed to notify no availability:', err)
+    } finally {
+      navigate('/acasa')
+    }
   }
 
   async function handleProceedToPayment() {
@@ -608,14 +620,25 @@ export default function BookingPanel({ consultantId, consultantName }) {
               )
             })()}
 
-            <button
-              className="btn btn-primary"
-              style={{ marginTop: 8 }}
-              disabled={!selectedSlotId || !selectedDurationMinutes}
-              onClick={() => setIsModalOpen(true)}
-            >
-              Continuă / Next Step
-            </button>
+            {hasCurrentAvailability === false ? (
+              <button
+                className="btn btn-primary"
+                style={{ marginTop: 8 }}
+                onClick={handleNoAvailabilityClick}
+                disabled={notifying}
+              >
+                {notifying ? 'Se trimite notificare…' : 'Caută alt consultant'}
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary"
+                style={{ marginTop: 8 }}
+                disabled={!selectedSlotId || !selectedDurationMinutes}
+                onClick={() => setIsModalOpen(true)}
+              >
+                Continuă / Next Step
+              </button>
+            )}
           </>
         )}
       </div>

@@ -10,6 +10,10 @@ export const adminApi = api.injectEndpoints({
       query: () => '/admin/feedbacks',
       providesTags: ['Feedback'],
     }),
+    getPrivateReviews: build.query({
+      query: ({ page = 1, limit = 30 } = {}) => `/admin/private-reviews?page=${page}&limit=${limit}`,
+      providesTags: ['Session'],
+    }),
     deleteFeedback: build.mutation({
       query: (id) => ({
         url: `/admin/feedbacks/${id}`,
@@ -20,4 +24,4 @@ export const adminApi = api.injectEndpoints({
   }),
 })
 
-export const { useGetAdminStatsQuery, useGetFeedbacksQuery, useDeleteFeedbackMutation } = adminApi
+export const { useGetAdminStatsQuery, useGetFeedbacksQuery, useGetPrivateReviewsQuery, useDeleteFeedbackMutation } = adminApi

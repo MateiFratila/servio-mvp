@@ -13,7 +13,9 @@ function bookingConfirmed({ clientName, consultantName, sessionDate, sessionTime
       <strong>${sessionDate}</strong> at <strong>${sessionTime}</strong>.
     </p>
     <p>You can view all meeting details, upload documents, and find the video link here:</p>
-    <p><a href="${bookingUrl}">Open meeting details</a></p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${bookingUrl}" class="btn" style="background-color: #377dff; color: #ffffff !important; font-weight: 600; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">Open meeting details</a>
+    </p>
   `
 
   return { subject, htmlContent }

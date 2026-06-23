@@ -43,6 +43,7 @@ model User {
   resetPasswordExpires DateTime? @map("reset_password_expires")
   isEmailConfirmed       Boolean   @default(false) @map("is_email_confirmed")
   emailConfirmationToken String?   @unique @map("email_confirmation_token")
+  isDeleted            Boolean   @default(false) @map("is_deleted")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -174,6 +175,7 @@ model Session {
   paymentStatus         String        @default("unpaid") @map("payment_status")
   meetingUrl            String?       @map("meeting_url")
   dailyRoomName         String?       @map("daily_room_name")
+  scheduledEmailIds     Json?         @map("scheduled_email_ids")
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
 
@@ -192,7 +194,7 @@ model Session {
 
 model SystemSetting {
   key       String   @id
-  value     String   @db.Text
+  value     String   @db.LongText
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")

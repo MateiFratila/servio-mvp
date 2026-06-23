@@ -13,7 +13,9 @@ function reviewRequest({ clientName, consultantName, sessionDate, bookingUrl }) 
       We'd love to hear your feedback!
     </p>
     <p>Leaving a review helps others find the right consultant and only takes a minute:</p>
-    <p><a href="${bookingUrl}">Leave a review</a></p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${bookingUrl}" class="btn" style="background-color: #377dff; color: #ffffff !important; font-weight: 600; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">Leave a review</a>
+    </p>
     <p>Thank you for using SERVIO.</p>
   `
 

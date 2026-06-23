@@ -11,11 +11,28 @@ const STATUS_BADGE = {
 export default function ConsultantCard({ consultant }) {
   const navigate = useNavigate()
   const t = useLabels()
-  const { id, slug, displayName, specialisations = [], bio, hourlyRate, averageRating, _count } = consultant
+  const { id, slug, displayName, specialisations = [], description, hourlyRate, averageRating, _count } = consultant
   const specNames = specialisations.map((cs) => cs.specialisation.name)
   const avatarSrc = `/api/consultants/${id}/avatar`
   const ratingVal = averageRating != null ? Number(averageRating) : 0
   const reviewsCount = _count?.reviews ?? 0
+
+  const stripHtml = (html) => {
+    if (!html) return ''
+    let text = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+    text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
+    text = text.replace(/<[^>]*>/g, ' ')
+    text = text
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+    return text.replace(/\s+/g, ' ').trim()
+  }
+
+  const plainBio = stripHtml(description)
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -58,7 +75,7 @@ export default function ConsultantCard({ consultant }) {
       </div>
 
       <p style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-        {bio}
+        {plainBio}
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>

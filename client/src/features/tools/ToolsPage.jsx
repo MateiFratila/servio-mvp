@@ -7,6 +7,7 @@ import UserManagementTab from './UserManagementTab'
 import SystemSettingsTab from './SystemSettingsTab'
 import FeedbacksTab from './FeedbacksTab'
 import SuggestionsVettingTab from './SuggestionsVettingTab'
+import LegalSettingsTab from './LegalSettingsTab'
 
 const TABS = [
   { id: 'overview', label: 'Platform Overview' },
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'settings', label: 'System Settings' },
   { id: 'feedbacks', label: 'Feedback & Contact' },
   { id: 'suggestions', label: 'Suggestions Vetting' },
+  { id: 'legal', label: 'Legal Policies' },
 ]
 
 export default function ToolsPage() {
@@ -24,7 +26,7 @@ export default function ToolsPage() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && ['overview', 'consultants', 'sessions', 'users', 'settings', 'feedbacks', 'suggestions'].includes(tabParam)) {
+    if (tabParam && ['overview', 'consultants', 'sessions', 'users', 'settings', 'feedbacks', 'suggestions', 'legal'].includes(tabParam)) {
       setActiveTab(tabParam)
     } else {
       setActiveTab('overview')
@@ -63,6 +65,7 @@ export default function ToolsPage() {
       {activeTab === 'settings' && <SystemSettingsTab />}
       {activeTab === 'feedbacks' && <FeedbacksTab />}
       {activeTab === 'suggestions' && <SuggestionsVettingTab />}
+      {activeTab === 'legal' && <LegalSettingsTab />}
     </div>
   )
 }

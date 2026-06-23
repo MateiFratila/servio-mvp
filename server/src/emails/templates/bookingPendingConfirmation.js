@@ -14,7 +14,9 @@ function bookingPendingConfirmation({ consultantName, clientName, sessionDate, s
       <strong>${sessionDate}</strong> at <strong>${sessionTime}</strong>.
     </p>
     <p>Please review the details and confirm or decline the booking:</p>
-    <p><a href="${bookingUrl}">View booking</a></p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${bookingUrl}" class="btn" style="background-color: #377dff; color: #ffffff !important; font-weight: 600; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">View booking</a>
+    </p>
     <p>If you take no action, the booking will be auto-confirmed 6 hours before the session.</p>
   `
 

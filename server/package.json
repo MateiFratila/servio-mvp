@@ -11,7 +11,8 @@
     "db:studio": "dotenv -e ../.env -- prisma studio --schema=prisma/schema.prisma",
     "db:seed": "dotenv -e ../.env -- prisma db seed --schema=prisma/schema.prisma",
     "db:clear": "dotenv -e ../.env -- node prisma/clear.js",
-    "db:clear:prod": "dotenv -e ../.env.prod -- node prisma/clear.js"
+    "db:clear:prod": "dotenv -e ../.env.prod -- node prisma/clear.js",
+    "db:test-booking": "dotenv -e ../.env -- node prisma/create-test-booking.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
