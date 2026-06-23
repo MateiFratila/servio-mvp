@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PaymentElement, useStripe, useElements, Elements } from '@stripe/react-stripe-js'
 import stripePromise from '../../lib/stripe'
-import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation, useUploadDocumentMutation, useNotifyNoAvailabilityMutation } from './catalogueApi'
+import { useGetConsultantSlotsQuery, useCreatePaymentIntentMutation, useUploadDocumentMutation, useNotifyNoAvailabilityMutation, useLazyLookupCompanyQuery } from './catalogueApi'
 import { api } from '../../services/api'
 import { useLabels } from '../../lib/useLabels'
 
@@ -131,6 +131,26 @@ export default function BookingPanel({ consultantId, consultantName, hasCurrentA
 
   const [createPaymentIntent, { isLoading: creatingIntent }] = useCreatePaymentIntentMutation()
   const [uploadDocument] = useUploadDocumentMutation()
+  const [triggerLookupCompany, { isFetching: isLookingUpCompany }] = useLazyLookupCompanyQuery()
+  const [lookupError, setLookupError] = useState('')
+
+  async function handleCuiLookup(cuiValue) {
+    const clean = (cuiValue || '').replace(/\D/g, '')
+    if (!clean) return
+
+    setLookupError('')
+    try {
+      const res = await triggerLookupCompany(clean).unwrap()
+      if (res.success && res.company) {
+        setBillingCompanyName(res.company.denumire || '')
+        setBillingRegCom(res.company.nrRegCom || '')
+        setBillingCompanyAddress(res.company.adresa || '')
+      }
+    } catch (err) {
+      console.error('Failed to lookup company by CUI:', err)
+      setLookupError(err?.data?.error || 'Nu s-au putut prelua datele automat. Vă rugăm să le introduceți manual.')
+    }
+  }
 
   // Retrieve current active slot object
   const selectedSlot = useMemo(() => {
@@ -792,6 +812,40 @@ export default function BookingPanel({ consultantId, consultantName, hasCurrentA
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div className="form-group">
+                      <label htmlFor="billing-cui">CUI / CIF (pentru auto-completare date) <span style={{ color: 'var(--red, #ef4444)' }}>*</span></label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          id="billing-cui"
+                          type="text"
+                          placeholder="RO12345678 sau 123456"
+                          value={billingCui}
+                          onChange={(e) => setBillingCui(e.target.value)}
+                          onBlur={() => handleCuiLookup(billingCui)}
+                          required
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleCuiLookup(billingCui)}
+                          disabled={isLookingUpCompany || !billingCui.trim()}
+                          className="btn btn-secondary"
+                          style={{ padding: '8px 16px', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '110px' }}
+                        >
+                          {isLookingUpCompany ? 'Se încarcă...' : 'Preia datele'}
+                        </button>
+                      </div>
+                      {lookupError && (
+                        <p style={{ color: 'var(--red, #ef4444)', fontSize: 12, margin: '4px 0 0 0' }}>
+                          {lookupError}
+                        </p>
+                      )}
+                      {!lookupError && isLookingUpCompany && (
+                        <p style={{ color: 'var(--text-muted, #71717a)', fontSize: 12, margin: '4px 0 0 0' }}>
+                          Se preiau datele de la ANAF...
+                        </p>
+                      )}
+                    </div>
+                    <div className="form-group">
                       <label htmlFor="billing-company-name">Denumire Companie / Company Name <span style={{ color: 'var(--red, #ef4444)' }}>*</span></label>
                       <input
                         id="billing-company-name"
@@ -802,29 +856,16 @@ export default function BookingPanel({ consultantId, consultantName, hasCurrentA
                         required
                       />
                     </div>
-                    <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <div>
-                        <label htmlFor="billing-cui">CUI / CIF <span style={{ color: 'var(--red, #ef4444)' }}>*</span></label>
-                        <input
-                          id="billing-cui"
-                          type="text"
-                          placeholder="RO12345678"
-                          value={billingCui}
-                          onChange={(e) => setBillingCui(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="billing-reg-com">Reg. Comertului <span style={{ color: 'var(--red, #ef4444)' }}>*</span></label>
-                        <input
-                          id="billing-reg-com"
-                          type="text"
-                          placeholder="J40/123/2020"
-                          value={billingRegCom}
-                          onChange={(e) => setBillingRegCom(e.target.value)}
-                          required
-                        />
-                      </div>
+                    <div className="form-group">
+                      <label htmlFor="billing-reg-com">Reg. Comerțului <span style={{ color: 'var(--red, #ef4444)' }}>*</span></label>
+                      <input
+                        id="billing-reg-com"
+                        type="text"
+                        placeholder="J40/123/2020"
+                        value={billingRegCom}
+                        onChange={(e) => setBillingRegCom(e.target.value)}
+                        required
+                      />
                     </div>
                     <div className="form-group">
                       <label htmlFor="billing-company-address">Adresă Sediu Social / Headquarters Address <span style={{ color: 'var(--red, #ef4444)' }}>*</span></label>

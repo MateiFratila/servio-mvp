@@ -112,6 +112,9 @@ export const catalogueApi = api.injectEndpoints({
         method: 'POST',
       }),
     }),
+    lookupCompany: build.query({
+      query: (cui) => `/companies/lookup/${cui}`,
+    }),
   }),
 })
 
@@ -135,4 +138,6 @@ export const {
   useSubmitReviewReplyMutation,
   useGetConsultantReviewsQuery,
   useNotifyNoAvailabilityMutation,
+  useLazyLookupCompanyQuery,
+  useLookupCompanyQuery,
 } = catalogueApi
