@@ -136,7 +136,7 @@ function renderEmailWithLayout(subject, htmlContent) {
           <tr>
             <td class="header" align="center">
               <a href="${APP_URL}" target="_blank">
-                <img src="${logoUrl}" alt="SERVIO" class="header-logo" style="max-height: 48px; border:0;">
+                <img src="${logoUrl}" alt="SERVIO" class="header-logo" height="40" style="display: block; height: 40px; width: auto; border: 0; outline: none; margin: 0 auto;">
               </a>
             </td>
           </tr>
@@ -150,7 +150,7 @@ function renderEmailWithLayout(subject, htmlContent) {
           <tr>
             <td class="footer" align="center">
               <div class="footer-logo-container">
-                <img src="${faviconUrl}" alt="S" class="footer-logo">
+                <img src="${faviconUrl}" alt="S" class="footer-logo" height="18" width="18" style="display: inline-block; vertical-align: middle; height: 18px; width: 18px; border: 0;">
                 <strong style="color: #1e293b; vertical-align: middle; margin-left: 4px;">SERVIO</strong>
               </div>
               <p>Acest e-mail a fost trimis automat de pe platforma SERVIO.</p>
