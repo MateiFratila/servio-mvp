@@ -750,8 +750,9 @@ export default function ProfileTab() {
   if (isLoading || !form) return <div className="card"><p style={{ color: 'var(--text-muted)' }}>Loading…</p></div>
 
   const profileId = profileData?.id
-  const avatarSrc = profileId ? `/api/consultants/${profileId}/avatar` : null
-  const bannerSrc = profileId ? `/api/consultants/${profileId}/banner` : null
+  const cacheBuster = profileData?.updatedAt ? `?v=${new Date(profileData.updatedAt).getTime()}` : ''
+  const avatarSrc = profileId ? `/api/consultants/${profileId}/avatar${cacheBuster}` : null
+  const bannerSrc = profileId ? `/api/consultants/${profileId}/banner${cacheBuster}` : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 640 }}>

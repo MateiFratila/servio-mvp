@@ -11,9 +11,10 @@ const STATUS_BADGE = {
 export default function ConsultantCard({ consultant }) {
   const navigate = useNavigate()
   const t = useLabels()
-  const { id, slug, displayName, specialisations = [], description, hourlyRate, averageRating, _count } = consultant
+  const { id, slug, displayName, specialisations = [], description, hourlyRate, averageRating, _count, updatedAt } = consultant
   const specNames = specialisations.map((cs) => cs.specialisation.name)
-  const avatarSrc = `/api/consultants/${id}/avatar`
+  const cacheBuster = updatedAt ? `?v=${new Date(updatedAt).getTime()}` : ''
+  const avatarSrc = `/api/consultants/${id}/avatar${cacheBuster}`
   const ratingVal = averageRating != null ? Number(averageRating) : 0
   const reviewsCount = _count?.reviews ?? 0
 

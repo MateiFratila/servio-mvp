@@ -78,6 +78,7 @@ const CONSULTANT_SELECT = {
   stripeOnboardingComplete: true,
   publicationRequested: true,
   averageRating: true,
+  updatedAt: true,
   _count: { select: { reviews: true } },
   specialisations: {
     select: { specialisation: { select: { id: true, name: true, slug: true } } },

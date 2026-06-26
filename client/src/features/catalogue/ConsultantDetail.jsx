@@ -20,8 +20,9 @@ export default function ConsultantDetail() {
 
   const specNames = (consultant.specialisations ?? []).map((cs) => cs.specialisation.name)
   const tags = (consultant.expertiseCategories ?? []).map((ec) => ec.category.name)
-  const avatarSrc = `/api/consultants/${consultant.id}/avatar`
-  const bannerSrc = `/api/consultants/${consultant.id}/banner`
+  const cacheBuster = consultant?.updatedAt ? `?v=${new Date(consultant.updatedAt).getTime()}` : ''
+  const avatarSrc = `/api/consultants/${consultant.id}/avatar${cacheBuster}`
+  const bannerSrc = `/api/consultants/${consultant.id}/banner${cacheBuster}`
 
   const shareUrl = `${window.location.origin}/consultant/${consultant.slug}`
 
